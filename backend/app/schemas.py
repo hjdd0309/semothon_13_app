@@ -1,5 +1,5 @@
 from datetime import datetime, time
-from typing import Optional, List
+from typing import Optional, List, Any
 
 from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
 
@@ -7,7 +7,7 @@ from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
 class DBCheckResponse(BaseModel):
     success: bool
     message: str
-    result: Optional[dict] = None
+    result: Optional[Any] = None
     error: Optional[str] = None
 
 
@@ -283,3 +283,58 @@ class ScheduleResponse(BaseModel):
     description: Optional[str] = None
     created_at: datetime
     updated_at: datetime
+
+class TaskAssignedUser(BaseModel):
+    id: int
+    username: str
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TaskCreateRequest(BaseModel):
+    room_id: int
+    assigned_user_id: int
+    title: str = Field(..., min_length=1, max_length=200)
+    description: Optional[str] = Field(None)
+    priority: str = Field(default="MEDIUM", description="LOW / MEDIUM / HIGH")
+    due_date: Optional[datetime] = None
+    created_by: str = Field(default="AI", description="AI / USER")
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "room_id": 1,
+                "assigned_user_id": 3,
+                "title": "기획안 초안 작성",
+                "description": "1차 회의 내용 기반으로 초안 작성",
+                "priority": "HIGH",
+                "due_date": "2025-07-10T23:59:00",
+                "created_by": "AI"
+            }
+        }
+    )
+
+
+class TaskResponse(BaseModel):
+    id: int
+    room_id: int
+    assigned_user_id: Optional[int]
+    title: str
+    description: Optional[str]
+    status: str
+    priority: str
+    progress_percent: int
+    due_date: Optional[datetime]
+    created_by: str
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    assigned_user: Optional[TaskAssignedUser] = None
+    ai_comment: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TaskListResponse(BaseModel):
+    tasks: List[TaskResponse]
+    total: int
+    overdue_count: int
+    ai_alert: Optional[str] = None

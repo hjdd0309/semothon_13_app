@@ -15,7 +15,9 @@ class Settings(BaseSettings):
     R2_BUCKET_NAME: str
     R2_PUBLIC_BASE_URL: str
     class Config:
-        env_file = ".env"
+        env_file=".env",
+        extra="ignore"  
+    
 
 
 settings = Settings()

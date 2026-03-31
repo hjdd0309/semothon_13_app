@@ -3,7 +3,7 @@ from app.database import test_db_connection
 from .schemas import DBCheckResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import auth, files, rooms, profile, schedules
+from app.routers import auth, files, rooms, profile, schedules, task
 
 app = FastAPI()
 
@@ -20,6 +20,7 @@ app.include_router(files.router)
 app.include_router(rooms.router)
 app.include_router(profile.router)
 app.include_router(schedules.router)
+app.include_router(task.router)
 
 
 @app.get("/")
