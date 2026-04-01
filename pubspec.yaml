@@ -10,6 +10,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  table_calendar: ^3.1.2
+  intl: ^0.19.0
 
   # UI / 기능 패키지
   flutter_slidable: ^3.1.1
