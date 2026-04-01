@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.dependencies import get_current_user
-from app.models import User
+from app.models import User, UserProfile
 from app.schemas import (
     SignUpRequest,
     SignUpResponse,
@@ -58,6 +58,7 @@ def signup(
             detail="이미 사용 중인 이메일입니다."
         )
 
+    # User 생성
     new_user = User(
         username=request.username,
         email=request.email,
@@ -65,6 +66,16 @@ def signup(
     )
 
     db.add(new_user)
+    db.flush()  # user.id 확보
+
+    # UserProfile 생성
+    new_profile = UserProfile(
+        user_id=new_user.id,
+        display_name=request.username
+    )
+
+    db.add(new_profile)
+
     db.commit()
     db.refresh(new_user)
 
