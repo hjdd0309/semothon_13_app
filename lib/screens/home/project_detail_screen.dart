@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 
+
 import '../models/app_notification_model.dart';
 import '../models/chat_message_model.dart';
 import '../models/member_model.dart';
@@ -1029,96 +1030,96 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     }
   }
 
-  Future<void> _createRoleSmart({
-    required String title,
-    required String? selectedMemberName,
-    required String inputMemberName,
-  }) async {
-    try {
-      int memberId;
-      String assigneeName;
-
-      if (selectedMemberName != null && selectedMemberName.isNotEmpty) {
-        final selectedMember = members.firstWhere(
-          (m) => m.name == selectedMemberName,
-        );
-        memberId = selectedMember.id;
-        assigneeName = selectedMember.name;
-      } else {
-        final typedName = inputMemberName.trim();
-        if (typedName.isEmpty) {
-          _showErrorSnackBar('팀원을 선택하거나 새 팀원 이름을 입력해주세요.');
-          return;
-        }
-
-        final existingMembers =
-            members.where((m) => m.name == typedName).toList();
-
-        if (existingMembers.isNotEmpty) {
-          memberId = existingMembers.first.id;
-          assigneeName = existingMembers.first.name;
-        } else {
-          try {
-            await widget.service.createMember(
-              projectNumber: project.projectNumber,
-              name: typedName,
-              studentId: '',
-            );
-            await _reloadProject();
-
-            final createdMember = project.members.firstWhere(
-              (m) => m.name == typedName,
-            );
-            memberId = createdMember.id;
-            assigneeName = createdMember.name;
-          } on UnsupportedError {
-            final newMember = MemberModel(
-              id: _nextMemberId(),
-              name: typedName,
-              studentId: '',
-            );
-
-            setState(() {
-              project = project.copyWith(
-                members: [...members, newMember],
-              );
-            });
-
-            memberId = newMember.id;
-            assigneeName = newMember.name;
-          }
-        }
-      }
-
-      try {
-        await widget.service.createRole(
-          projectNumber: project.projectNumber,
-          title: title,
-          assigneeId: memberId,
-        );
-        await _reloadProject();
-      } on UnsupportedError {
-        final newRole = RoleModel(
-          id: _maxBy(roles, (item) => item.id) + 1,
-          title: title,
-          assignee: assigneeName,
-          status: '시작 전',
-          tasks: [],
-        );
-
-        setState(() {
-          project = project.copyWith(
-            roles: [...roles, newRole],
-          );
-          _refreshAllRoleStatuses();
-        });
-      }
-
-      _showSuccessSnackBar('역할을 추가했어요.');
-    } catch (e) {
-      _showErrorSnackBar('역할 추가에 실패했어요.');
-    }
-  }
+  // Future<void> _createRoleSmart({
+  //   required String title,
+  //   required String? selectedMemberName,
+  //   required String inputMemberName,
+  // }) async {
+  //   try {
+  //     int memberId;
+  //     String assigneeName;
+  //
+  //     if (selectedMemberName != null && selectedMemberName.isNotEmpty) {
+  //       final selectedMember = members.firstWhere(
+  //         (m) => m.name == selectedMemberName,
+  //       );
+  //       memberId = selectedMember.id;
+  //       assigneeName = selectedMember.name;
+  //     } else {
+  //       final typedName = inputMemberName.trim();
+  //       if (typedName.isEmpty) {
+  //         _showErrorSnackBar('팀원을 선택하거나 새 팀원 이름을 입력해주세요.');
+  //         return;
+  //       }
+  //
+  //       final existingMembers =
+  //           members.where((m) => m.name == typedName).toList();
+  //
+  //       if (existingMembers.isNotEmpty) {
+  //         memberId = existingMembers.first.id;
+  //         assigneeName = existingMembers.first.name;
+  //       } else {
+  //         try {
+  //           await widget.service.createMember(
+  //             projectNumber: project.projectNumber,
+  //             name: typedName,
+  //             studentId: '',
+  //           );
+  //           await _reloadProject();
+  //
+  //           final createdMember = project.members.firstWhere(
+  //             (m) => m.name == typedName,
+  //           );
+  //           memberId = createdMember.id;
+  //           assigneeName = createdMember.name;
+  //         } on UnsupportedError {
+  //           final newMember = MemberModel(
+  //             id: _nextMemberId(),
+  //             name: typedName,
+  //             studentId: '',
+  //           );
+  //
+  //           setState(() {
+  //             project = project.copyWith(
+  //               members: [...members, newMember],
+  //             );
+  //           });
+  //
+  //           memberId = newMember.id;
+  //           assigneeName = newMember.name;
+  //         }
+  //       }
+  //     }
+  //
+  //     try {
+  //       await widget.service.createRole(
+  //         projectNumber: project.projectNumber,
+  //         title: title,
+  //         assigneeId: memberId,
+  //       );
+  //       await _reloadProject();
+  //     } on UnsupportedError {
+  //       final newRole = RoleModel(
+  //         id: _maxBy(roles, (item) => item.id) + 1,
+  //         title: title,
+  //         assignee: assigneeName,
+  //         status: '시작 전',
+  //         tasks: [],
+  //       );
+  //
+  //       setState(() {
+  //         project = project.copyWith(
+  //           roles: [...roles, newRole],
+  //         );
+  //         _refreshAllRoleStatuses();
+  //       });
+  //     }
+  //
+  //     _showSuccessSnackBar('역할을 추가했어요.');
+  //   } catch (e) {
+  //     _showErrorSnackBar('역할 추가에 실패했어요.');
+  //   }
+  // }
 
   Future<void> showAddRoleSmartSheet() async {
     final titleController = TextEditingController();
@@ -1275,11 +1276,11 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
 
                               Navigator.pop(context);
 
-                              await _createRoleSmart(
-                                title: title,
-                                selectedMemberName: selectedMemberName,
-                                inputMemberName: inputMemberName,
-                              );
+                              // await _createRoleSmart(
+                              //   title: title,
+                              //   selectedMemberName: selectedMemberName,
+                              //   inputMemberName: inputMemberName,
+                              // );
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: kWine,

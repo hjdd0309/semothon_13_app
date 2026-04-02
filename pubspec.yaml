@@ -20,6 +20,9 @@ dependencies:
 
   # iOS 스타일 아이콘
   cupertino_icons: ^1.0.8
+  file_picker: ^10.3.10
+  image_picker: ^1.2.1
+  permission_handler: ^12.0.1
 
 dev_dependencies:
   flutter_test:
