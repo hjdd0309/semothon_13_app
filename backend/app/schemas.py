@@ -1,7 +1,7 @@
 from datetime import datetime, time
-from typing import Optional, List, Any
+from typing import Optional, List, Any,Dict
 
-from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
+from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator, model_validator
 
 
 class DBCheckResponse(BaseModel):
@@ -352,3 +352,88 @@ class JoinRoomByInviteCodeResponse(BaseModel):
     room_id: int
     title: str
     current_stage: str
+
+    
+# --- AI Feature Schemas ---
+
+class IceBreakingAnswer(BaseModel):
+    user_id: int
+    question: str
+    answer: str
+
+class IceBreakingRequest(BaseModel):
+    room_id: int
+    answers: List[IceBreakingAnswer]
+
+class IceBreakingResponse(BaseModel):
+    success: bool
+    message: str
+    analysis_report: str
+
+class TopicRecommendRequest(BaseModel):
+    room_id: int
+    subject: str
+    answers: List[IceBreakingAnswer]
+
+class RecommendedTopic(BaseModel):
+    topic_name: str
+    reason: str
+    expected_effect: str
+
+class TopicRecommendResponse(BaseModel):
+    success: bool
+    topics: List[RecommendedTopic]
+
+class TaskDistributeRequest(BaseModel):
+    room_id: int
+    final_topic: str
+    deadline: Optional[datetime] = None
+
+class GeneratedTask(BaseModel):
+    title: str
+    description: str
+    assigned_user_id: Optional[int]
+    reason: str
+
+class TaskDistributeResponse(BaseModel):
+    success: bool
+    tasks: List[GeneratedTask]
+
+class ChatMessageRequest(BaseModel):
+    room_id: int
+    message: str
+
+class ChatMessageResponse(BaseModel):
+    success: bool
+    reply: str
+
+
+
+
+class IceBreakingRequest(BaseModel):
+    room_id: int = Field(..., description="분석 대상 팀의 room id")
+    title: str = Field(..., description="이 분석 요청의 제목")
+    question: str = Field(
+        default="다음 팀원 정보를 바탕으로 팀 전체 성향, 각 팀원의 특징, 팀원 간 시너지, 어색함을 줄일 수 있는 아이스브레이킹 포인트를 분석해줘.",
+        description="AI에게 전달할 질문"
+    )
+    summary_text: Optional[str] = Field(
+        default=None,
+        description="AI에게 직접 전달할 텍스트 요약"
+    )
+    context_json: Optional[dict[str, Any]] = Field(
+        default=None,
+        description="팀원 정보 및 팀 상황을 구조화된 JSON으로 전달"
+    )
+
+    @model_validator(mode="after")
+    def validate_input(self):
+        if not self.summary_text and not self.context_json:
+            raise ValueError("summary_text 또는 context_json 중 하나는 반드시 제공해야 합니다.")
+        return self
+
+class IceBreakingResponse(BaseModel):
+    success: bool
+    message: str
+    analysis_report: Dict[str, Any]
+    ai_context_id: int

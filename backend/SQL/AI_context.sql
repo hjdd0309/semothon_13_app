@@ -1,0 +1,15 @@
+USE semothon;
+
+CREATE TABLE ai_contexts (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    room_id BIGINT NOT NULL,
+    context_type VARCHAR(50) NOT NULL DEFAULT 'team_project',
+    title VARCHAR(255) NOT NULL,
+    context_json JSON NULL,
+    summary_text TEXT NULL,
+	answer TEXT NULL,
+    version INT NOT NULL DEFAULT 1,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
