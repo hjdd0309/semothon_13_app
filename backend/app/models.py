@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, func, ForeignKey, Text, Enum, BigInteger, Integer, Time
+from sqlalchemy import Column, String, DateTime, func, ForeignKey, Text, Enum, BigInteger, Integer, Time, JSON, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.mysql import BIGINT
 from app.database import Base
@@ -148,3 +148,20 @@ class ChatMessage(Base):
 
     room = relationship("Room", backref="chat_messages")
     user = relationship("User", backref="chat_messages")
+
+
+class AIContext(Base):
+    __tablename__ = "ai_contexts"
+
+    id = Column(BigInteger, primary_key=True, index=True)
+    room_id = Column(BigInteger, ForeignKey("rooms.id"), nullable=False)
+    context_type = Column(String(50), nullable=False, default="team_project")
+    title = Column(String(255), nullable=False)
+    context_json = Column(JSON, nullable=True)
+    summary_text = Column(Text, nullable=False)
+    question = Column(Text, nullable=True)
+    answer = Column(Text, nullable=True)
+    version = Column(Integer, nullable=False, default=1)
+    is_active = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime, nullable=False, server_default=func.now())
+    updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
