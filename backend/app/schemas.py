@@ -1,5 +1,5 @@
 from datetime import datetime, time
-from typing import Optional, List, Any,Dict
+from typing import Optional, List, Any,Dict,Literal
 
 from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator, model_validator
 
@@ -447,3 +447,39 @@ class ChatMessageResponse(BaseModel):
     success: bool
     reply: str
     ai_context_id: int
+
+
+class ChatMessageCreateRequest(BaseModel):
+    message_type: Literal["TEXT", "IMAGE", "FILE", "SYSTEM", "AI"] = Field(
+        default="TEXT",
+        description="메시지 타입"
+    )
+    content: Optional[str] = Field(default=None, description="텍스트 메시지 내용")
+    image_url: Optional[str] = Field(default=None, description="이미지 URL")
+    related_file_id: Optional[int] = Field(default=None, description="첨부 파일 ID")
+
+
+class ChatMessageItem(BaseModel):
+    id: int
+    room_id: int
+    sender_user_id: Optional[int]
+    sender_name: str
+    message_type: str
+    content: Optional[str]
+    image_url: Optional[str]
+    related_file_id: Optional[int]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ChatMessageListResponse(BaseModel):
+    success: bool
+    messages: list[ChatMessageItem]
+
+
+class ChatMessageCreateResponse(BaseModel):
+    success: bool
+    message: str
+    chat_message: ChatMessageItem

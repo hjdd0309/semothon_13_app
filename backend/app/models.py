@@ -136,18 +136,18 @@ class UserSchedule(Base):
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
 
-class ChatMessage(Base):
-    __tablename__ = "chat_messages"
+# class ChatMessage(Base):
+#     __tablename__ = "chat_messages"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
-    room_id = Column(BigInteger, ForeignKey("rooms.id", ondelete="CASCADE"), nullable=False)
-    user_id = Column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=True) # AI의 경우 Null
-    sender_type = Column(Enum("USER", "AI", "SYSTEM", name="message_sender_type"), nullable=False, server_default="USER")
-    message = Column(Text, nullable=False)
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
+#     id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
+#     room_id = Column(BigInteger, ForeignKey("rooms.id", ondelete="CASCADE"), nullable=False)
+#     user_id = Column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=True) # AI의 경우 Null
+#     sender_type = Column(Enum("USER", "AI", "SYSTEM", name="message_sender_type"), nullable=False, server_default="USER")
+#     message = Column(Text, nullable=False)
+#     created_at = Column(DateTime, nullable=False, server_default=func.now())
 
-    room = relationship("Room", backref="chat_messages")
-    user = relationship("User", backref="chat_messages")
+#     room = relationship("Room", backref="chat_messages")
+#     user = relationship("User", backref="chat_messages")
 
 
 class AIContext(Base):
@@ -165,3 +165,22 @@ class AIContext(Base):
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+
+    id = Column(BigInteger, primary_key=True, index=True)
+    room_id = Column(BigInteger, ForeignKey("rooms.id", ondelete="CASCADE"), nullable=False)
+    sender_user_id = Column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    message_type = Column(
+        Enum("TEXT", "IMAGE", "FILE", "SYSTEM", "AI", name="chat_message_type_enum"),
+        nullable=False,
+        default="TEXT"
+    )
+    content = Column(Text, nullable=True)
+    image_url = Column(String(500), nullable=True)
+    related_file_id = Column(BigInteger, ForeignKey("files.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime, nullable=False, server_default=func.now())
+
+    sender = relationship("User", foreign_keys=[sender_user_id])
