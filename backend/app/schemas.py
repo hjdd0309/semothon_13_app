@@ -352,3 +352,57 @@ class JoinRoomByInviteCodeResponse(BaseModel):
     room_id: int
     title: str
     current_stage: str
+
+    
+# --- AI Feature Schemas ---
+
+class IceBreakingAnswer(BaseModel):
+    user_id: int
+    question: str
+    answer: str
+
+class IceBreakingRequest(BaseModel):
+    room_id: int
+    answers: List[IceBreakingAnswer]
+
+class IceBreakingResponse(BaseModel):
+    success: bool
+    message: str
+    analysis_report: str
+
+class TopicRecommendRequest(BaseModel):
+    room_id: int
+    subject: str
+    answers: List[IceBreakingAnswer]
+
+class RecommendedTopic(BaseModel):
+    topic_name: str
+    reason: str
+    expected_effect: str
+
+class TopicRecommendResponse(BaseModel):
+    success: bool
+    topics: List[RecommendedTopic]
+
+class TaskDistributeRequest(BaseModel):
+    room_id: int
+    final_topic: str
+    deadline: Optional[datetime] = None
+
+class GeneratedTask(BaseModel):
+    title: str
+    description: str
+    assigned_user_id: Optional[int]
+    reason: str
+
+class TaskDistributeResponse(BaseModel):
+    success: bool
+    tasks: List[GeneratedTask]
+
+class ChatMessageRequest(BaseModel):
+    room_id: int
+    message: str
+
+class ChatMessageResponse(BaseModel):
+    success: bool
+    reply: str

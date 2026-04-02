@@ -135,3 +135,16 @@ class UserSchedule(Base):
     description = Column(String(500), nullable=True)
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
+    room_id = Column(BigInteger, ForeignKey("rooms.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=True) # AI의 경우 Null
+    sender_type = Column(Enum("USER", "AI", "SYSTEM", name="message_sender_type"), nullable=False, server_default="USER")
+    message = Column(Text, nullable=False)
+    created_at = Column(DateTime, nullable=False, server_default=func.now())
+
+    room = relationship("Room", backref="chat_messages")
+    user = relationship("User", backref="chat_messages")
