@@ -341,3 +341,14 @@ class TaskListResponse(BaseModel):
     total: int
     overdue_count: int
     ai_alert: Optional[str] = None
+    
+class JoinRoomByInviteCodeRequest(BaseModel):
+    invite_code: str
+
+
+class JoinRoomByInviteCodeResponse(BaseModel):
+    success: bool
+    message: str
+    room_id: int
+    title: str
+    current_stage: str

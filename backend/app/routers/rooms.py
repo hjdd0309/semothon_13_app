@@ -16,6 +16,9 @@ from app.schemas import (
     RoomMemberItem,
     RoomUserAddRequest,
     RoomUserAddResponse,
+    JoinRoomByInviteCodeRequest,
+    JoinRoomByInviteCodeResponse,
+    ErrorResponse,
 )
 
 router = APIRouter(prefix="/rooms", tags=["rooms"])
@@ -318,3 +321,129 @@ def list_rooms(
         )
         for row in rows
     ]
+
+
+@router.post(
+    "/join-by-invite-code",
+    response_model=JoinRoomByInviteCodeResponse,
+    summary="초대 코드로 팀 참가",
+    description=(
+        "초대 코드를 이용해 팀에 참가합니다.\n\n"
+        "- 해당 초대 코드의 팀이 없으면 에러를 반환합니다.\n"
+        "- 이미 참가한 팀이면 에러를 반환합니다.\n"
+        "- 팀 정원이 찼으면 참가할 수 없습니다.\n"
+        "- 로그인한 사용자를 room_members에 추가합니다."
+    ),
+    responses={
+        200: {"description": "팀 참가 성공"},
+        400: {
+            "model": ErrorResponse,
+            "description": "잘못된 요청(이미 참가한 팀 / 정원 초과)"
+        },
+        404: {
+            "model": ErrorResponse,
+            "description": "해당 초대 코드를 가진 팀이 없음"
+        },
+        401: {
+            "model": ErrorResponse,
+            "description": "인증 실패"
+        }
+    }
+)
+def join_room_by_invite_code(
+    request: JoinRoomByInviteCodeRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    room = db.query(Room).filter(Room.invite_code == request.invite_code).first()
+
+    if room is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="해당 초대 코드를 가진 팀이 존재하지 않습니다."
+        )
+
+    existing_member = (
+        db.query(RoomMember)
+        .filter(
+            RoomMember.room_id == room.id,
+            RoomMember.user_id == current_user.id
+        )
+        .first()
+    )
+
+    if existing_member:
+        if existing_member.join_status == "JOINED":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="이미 해당 팀에 참가한 사용자입니다."
+            )
+
+        # 예전에 LEFT/KICKED 상태였던 경우 재참가 허용 여부는 정책에 따라 다름
+        # 여기서는 LEFT면 재참가 허용, KICKED면 불가로 예시 구현
+        if existing_member.join_status == "KICKED":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="해당 팀에서 강제 퇴장된 사용자입니다."
+            )
+
+        if existing_member.join_status == "LEFT":
+            joined_count = (
+                db.query(func.count(RoomMember.id))
+                .filter(
+                    RoomMember.room_id == room.id,
+                    RoomMember.join_status == "JOINED"
+                )
+                .scalar()
+            )
+
+            if joined_count >= room.max_members:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="팀 정원이 가득 찼습니다."
+                )
+
+            existing_member.join_status = "JOINED"
+            db.commit()
+            db.refresh(existing_member)
+
+            return JoinRoomByInviteCodeResponse(
+                success=True,
+                message="팀에 다시 참가했습니다.",
+                room_id=room.id,
+                title=room.title,
+                current_stage=room.current_stage
+            )
+
+    joined_count = (
+        db.query(func.count(RoomMember.id))
+        .filter(
+            RoomMember.room_id == room.id,
+            RoomMember.join_status == "JOINED"
+        )
+        .scalar()
+    )
+
+    if joined_count >= room.max_members:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="팀 정원이 가득 찼습니다."
+        )
+
+    new_member = RoomMember(
+        room_id=room.id,
+        user_id=current_user.id,
+        role_in_room="MEMBER",
+        join_status="JOINED",
+    )
+
+    db.add(new_member)
+    db.commit()
+
+    return JoinRoomByInviteCodeResponse(
+        success=True,
+        message="팀 참가가 완료되었습니다.",
+        room_id=room.id,
+        title=room.title,
+        current_stage=room.current_stage
+    )
