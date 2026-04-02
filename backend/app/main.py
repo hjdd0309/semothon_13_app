@@ -4,6 +4,11 @@ from .schemas import DBCheckResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers import auth, files, rooms, profile, schedules, task, ai
+from app.database import Base, engine
+from app import models
+
+# 서버 시작 시 테이블 자동 생성
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 

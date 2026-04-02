@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, func, ForeignKey, Text, Enum, BigInteger, Integer, Time, JSON, Boolean
+from sqlalchemy import Column, String, DateTime, func, ForeignKey, Text, Enum, Integer, Time, JSON, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.mysql import BIGINT
 from app.database import Base
@@ -43,8 +43,8 @@ class UserProfile(Base):
 class Room(Base):
     __tablename__ = "rooms"
 
-    id = Column(BigInteger, primary_key=True, index=True, autoincrement=True)
-    host_user_id = Column(BigInteger, ForeignKey("users.id"), nullable=False)
+    id = Column(BIGINT(unsigned=True), primary_key=True, index=True, autoincrement=True)
+    host_user_id = Column(BIGINT(unsigned=True), ForeignKey("users.id"), nullable=False)
     title = Column(String(255), nullable=False)
     description = Column(String(500), nullable=True)
     invite_code = Column(String(20), unique=True, nullable=False)
@@ -59,9 +59,9 @@ class Room(Base):
 class RoomMember(Base):
     __tablename__ = "room_members"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    room_id = Column(BigInteger, ForeignKey("rooms.id", ondelete="CASCADE"), nullable=False)
-    user_id = Column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    id = Column(BIGINT(unsigned=True), primary_key=True, autoincrement=True)
+    room_id = Column(BIGINT(unsigned=True), ForeignKey("rooms.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(BIGINT(unsigned=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     role_in_room = Column(String(20), default="member")
     join_status = Column(String(20), default="joined")
     joined_at = Column(DateTime, server_default=func.now())
@@ -70,13 +70,12 @@ class RoomMember(Base):
 class Task(Base):
     __tablename__ = "tasks"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    room_id = Column(BigInteger, ForeignKey("rooms.id", ondelete="CASCADE"), nullable=False)
-    assigned_user_id = Column(BigInteger, ForeignKey("users.id"), nullable=True)
+    id = Column(BIGINT(unsigned=True), primary_key=True, autoincrement=True)
+    room_id = Column(BIGINT(unsigned=True), ForeignKey("rooms.id", ondelete="CASCADE"), nullable=False)
+    assigned_user_id = Column(BIGINT(unsigned=True), ForeignKey("users.id"), nullable=True)
     title = Column(String(255), nullable=False)
     description = Column(String(500), nullable=True)
     
-    # 중복된 컬럼들을 하나로 통합 및 Enum 설정 적용
     status = Column(
         Enum("TODO", "IN_PROGRESS", "DONE", "BLOCKED", name="task_status"),
         nullable=False,
@@ -97,7 +96,6 @@ class Task(Base):
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
-    # 관계 설정
     room = relationship("Room", back_populates="tasks")
     assigned_user = relationship("User", back_populates="tasks")
     files = relationship("File", back_populates="task")
@@ -106,17 +104,18 @@ class Task(Base):
 class File(Base):
     __tablename__ = "files"
 
-    id = Column(BigInteger, primary_key=True, index=True, autoincrement=True)
-    room_id = Column(BigInteger, ForeignKey("rooms.id", ondelete="CASCADE"), nullable=False)
-    uploaded_by = Column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    task_id = Column(BigInteger, ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True)
+    id = Column(BIGINT(unsigned=True), primary_key=True, index=True, autoincrement=True)
+    room_id = Column(BIGINT(unsigned=True), ForeignKey("rooms.id", ondelete="CASCADE"), nullable=False)
+    # 수정 완료: uploaded_by와 task_id를 BIGINT(unsigned=True)로 변경
+    uploaded_by = Column(BIGINT(unsigned=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    task_id = Column(BIGINT(unsigned=True), ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True)
 
     original_name = Column(String(255), nullable=False)
     stored_name = Column(String(255), nullable=False)
     object_key = Column(String(500), nullable=False)
     file_url = Column(String(500), nullable=False)
     mime_type = Column(String(100), nullable=True)
-    file_size = Column(BigInteger, nullable=True)
+    file_size = Column(BIGINT(unsigned=True), nullable=True) # 파일 사이즈도 큰 값을 대비해 BIGINT 유지
     created_at = Column(DateTime, nullable=False, server_default=func.now())
 
     task = relationship("Task", back_populates="files")
@@ -125,8 +124,8 @@ class File(Base):
 class UserSchedule(Base):
     __tablename__ = "user_schedules"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
-    user_id = Column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    id = Column(BIGINT(unsigned=True), primary_key=True, autoincrement=True, index=True)
+    user_id = Column(BIGINT(unsigned=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     day = Column(String(20), nullable=False)
     start_time = Column(Time, nullable=False)
     end_time = Column(Time, nullable=False)
@@ -139,9 +138,9 @@ class UserSchedule(Base):
 class ChatMessage(Base):
     __tablename__ = "chat_messages"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
-    room_id = Column(BigInteger, ForeignKey("rooms.id", ondelete="CASCADE"), nullable=False)
-    user_id = Column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=True) # AI의 경우 Null
+    id = Column(BIGINT(unsigned=True), primary_key=True, autoincrement=True, index=True)
+    room_id = Column(BIGINT(unsigned=True), ForeignKey("rooms.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(BIGINT(unsigned=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True) 
     sender_type = Column(Enum("USER", "AI", "SYSTEM", name="message_sender_type"), nullable=False, server_default="USER")
     message = Column(Text, nullable=False)
     created_at = Column(DateTime, nullable=False, server_default=func.now())
@@ -153,8 +152,8 @@ class ChatMessage(Base):
 class AIContext(Base):
     __tablename__ = "ai_contexts"
 
-    id = Column(BigInteger, primary_key=True, index=True)
-    room_id = Column(BigInteger, ForeignKey("rooms.id"), nullable=False)
+    id = Column(BIGINT(unsigned=True), primary_key=True, index=True)
+    room_id = Column(BIGINT(unsigned=True), ForeignKey("rooms.id"), nullable=False)
     context_type = Column(String(50), nullable=False, default="team_project")
     title = Column(String(255), nullable=False)
     context_json = Column(JSON, nullable=True)
