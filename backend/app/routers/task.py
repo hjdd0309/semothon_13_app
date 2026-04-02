@@ -13,7 +13,6 @@ from app.schemas import TaskCreateRequest, TaskResponse, TaskListResponse, TaskA
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
 
-# ✅ Enum 정의
 class PriorityEnum(str, Enum):
     LOW = "LOW"
     MEDIUM = "MEDIUM"
@@ -25,7 +24,6 @@ class CreatedByEnum(str, Enum):
     USER = "USER"
 
 
-# ✅ 헬퍼 함수들
 def get_now() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -47,20 +45,20 @@ def is_overdue(task: Task, now: datetime) -> bool:
 def make_ai_comment(task: Task) -> str:
     now = get_now()
     if is_overdue(task, now):
-        return f"🚨 '{task.title}' 마감이 지났어요! 빨리 처리해주세요."
+        return f" '{task.title}' 마감이 지났습니다!"
     if task.priority == "HIGH":
         if task.progress_percent == 0:
-            return f"🔥 '{task.title}' HIGH 우선순위인데 아직 시작 안 했어요!"
+            return f" '{task.title}' HIGH 우선순위에요!"
         elif task.progress_percent >= 80:
-            return f"🔥 '{task.title}' 거의 끝났어요! 조금만 더!"
-        return f"🔥 '{task.title}' HIGH 우선순위예요. 집중해주세요!"
-    return f"✅ '{task.title}' 태스크 등록 완료. 화이팅! 💪"
+            return f" '{task.title}' 거의 끝났어요! "
+        return f"'{task.title}' HIGH 우선순위예요!"
+    return f" '{task.title}' 태스크 등록 완료. "
 
 
 def make_ai_alert(overdue_count: int) -> Optional[str]:
     if overdue_count == 0:
         return None
-    return f"🚨 AI 팀장 경고: 마감이 지난 태스크가 {overdue_count}개 있어요!"
+    return f" 경고: 마감이 지난 태스크가 {overdue_count}개 있어요!"
 
 
 def serialize_task(task: Task) -> TaskResponse:
@@ -140,7 +138,7 @@ def create_task(body: TaskCreateRequest, db: Session = Depends(get_db)):
     description="특정 방의 모든 태스크를 우선순위와 마감일 순서로 정렬하여 가져옵니다. 지연된 태스크 개수에 따른 AI 알림이 포함됩니다."
 )
 def get_tasks_by_room(room_id: int, db: Session = Depends(get_db)):
-    # ✅ DB에서 우선순위 정렬 (HIGH -> MEDIUM -> LOW)
+    # DB에서 우선순위 정렬 (HIGH -> MEDIUM -> LOW)
     priority_case = case(
         (Task.priority == "HIGH", 0),
         (Task.priority == "MEDIUM", 1),
