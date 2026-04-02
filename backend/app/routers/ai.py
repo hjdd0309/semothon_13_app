@@ -228,49 +228,116 @@ def distribute_tasks(request: schemas.TaskDistributeRequest, db: Session = Depen
         tasks=[]
     )
 
-@router.post("/chat", response_model=schemas.ChatMessageResponse)
-def chat_with_bot(request: schemas.ChatMessageRequest, db: Session = Depends(get_db)):
-    """
-    [Phase 4] 팀 통합 데이터베이스 AI Q&A API
-    해당 룸(방)에 존재하는 과거 채팅 트래킹 포함
-    """
-    if not client:
-         raise HTTPException(status_code=500, detail="API Key is not configured")
-         
-    # 사용자 메시지 DB 저장 (발신: USER)
-    new_message = models.ChatMessage(room_id=request.room_id, message=request.message, sender_type="USER")
-    db.add(new_message)
-    db.commit()
-    db.refresh(new_message)
+def build_system_chat_prompt() -> str:
+    return """
+너는 경희대 팀 프로젝트를 돕는 친근한 AI 코치다.
+상냥하고 자연스럽게 답하되, 너무 가볍지 말고 실제로 도움이 되게 답해라.
+이모지는 쓰지 말아야 한다.
+반드시 한국어로 답변하라.
+주어진 팀 정보와 상황 요약을 우선적으로 참고해서 답하라.
+정보가 부족하면 과도하게 추측하지 말고, 부족한 점을 자연스럽게 언급하라.
+""".strip()
 
-    # 이전 내역 불러와서 컨텍스트로 전달
-    history = db.query(models.ChatMessage).filter(models.ChatMessage.room_id == request.room_id).order_by(models.ChatMessage.created_at.asc()).all()
-    
-    messages = [
-        {"role": "system", "content": "너는 세모톤 프로젝트의 다정하고 유머러스한 AI 어시스턴트야. 과거 대화 내용과 상황을 바탕으로 답변해줘."}
-    ]
-    
-    for h in history:
-        # ROLE 변환 (USER -> user, AI -> assistant)
-        role = "user" if h.sender_type == "USER" else "assistant"
-        messages.append({"role": role, "content": h.message})
-    
-    try:
-        # Mindlogic API (OpenAI SDK 호환) 호출
-        response = client.chat.completions.create(
-            model=MODEL_NAME, # 사용 모델: claude-sonnet-4-6
-            messages=messages,
+
+def build_chat_prompt(summary_text: str, question: str) -> str:
+    return f"""
+아래는 현재 팀 프로젝트에 대한 요약 정보다.
+
+[팀 정보]
+{summary_text}
+
+[사용자 질문]
+{question}
+
+[답변 목표]
+- 팀 상황에 맞는 실질적인 조언 제공
+- 추상적인 말보다 바로 활용 가능한 답변 제공
+- 필요하면 우선순위나 다음 행동을 제안
+
+[주의사항]
+- 팀 정보에 없는 내용을 과도하게 단정하지 말 것
+- 질문에 직접적으로 답할 것
+- 너무 장황하지 않되, 핵심은 충분히 설명할 것
+""".strip()
+
+@router.post(
+    "/chat",
+    response_model=schemas.ChatMessageResponse,
+    summary="팀 컨텍스트 기반 AI Q&A",
+    description=(
+        "해당 room의 활성 AI 컨텍스트를 불러와 summary_text를 기반으로 "
+        "사용자 질문에 답변합니다. 답변은 ai_contexts 테이블에도 저장됩니다."
+    )
+)
+def chat_with_bot(
+    request: schemas.ChatMessageRequest,
+    db: Session = Depends(get_db)
+):
+    if not client:
+        raise HTTPException(status_code=500, detail="API Key is not configured")
+
+    room = db.query(Room).filter(Room.id == request.room_id).first()
+    if room is None:
+        raise HTTPException(status_code=404, detail="해당 room이 존재하지 않습니다.")
+
+    ai_context = (
+        db.query(AIContext)
+        .filter(
+            AIContext.room_id == request.room_id,
+            AIContext.is_active == True
         )
-        answer_text = response.choices[0].message.content
+        .order_by(AIContext.updated_at.desc())
+        .first()
+    )
+
+    if ai_context is None:
+        raise HTTPException(
+            status_code=404,
+            detail="해당 room의 활성 AI 컨텍스트가 존재하지 않습니다."
+        )
+
+    if not ai_context.summary_text:
+        raise HTTPException(
+            status_code=400,
+            detail="활성 AI 컨텍스트의 summary_text가 비어 있습니다."
+        )
+
+    prompt = build_chat_prompt(
+        summary_text=ai_context.summary_text,
+        question=request.message
+    )
+    system_prompt = build_system_chat_prompt()
+
+    try:
+        response = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[
+                {
+                    "role": "system",
+                    "content": system_prompt,
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.7,
+        )
+
+        answer_text = response.choices[0].message.content.strip()
+
     except Exception as e:
-        answer_text = f"AI API 응답 과정에서 오류가 발생했습니다: {str(e)}"
-    
-    # AI 응답을 DB에 저장
-    ai_reply = models.ChatMessage(room_id=request.room_id, message=answer_text, sender_type="AI")
-    db.add(ai_reply)
+        raise HTTPException(
+            status_code=500,
+            detail=f"AI 답변 호출 중 오류가 발생했습니다: {str(e)}"
+        )
+
+    ai_context.answer = answer_text
     db.commit()
+    db.refresh(ai_context)
 
     return schemas.ChatMessageResponse(
         success=True,
-        reply=answer_text
+        reply=answer_text,
+        ai_context_id=ai_context.id
     )

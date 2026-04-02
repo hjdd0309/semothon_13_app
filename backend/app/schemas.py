@@ -437,3 +437,13 @@ class IceBreakingResponse(BaseModel):
     message: str
     analysis_report: Dict[str, Any]
     ai_context_id: int
+
+class ChatMessageRequest(BaseModel):
+    room_id: int = Field(..., description="질문 대상 room id")
+    message: str = Field(..., description="사용자 질문")
+
+
+class ChatMessageResponse(BaseModel):
+    success: bool
+    reply: str
+    ai_context_id: int
