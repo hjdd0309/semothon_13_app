@@ -370,10 +370,26 @@ class IceBreakingResponse(BaseModel):
     message: str
     analysis_report: str
 
+class QuestionItem(BaseModel):
+    index: int
+    text: str
+    type: str  # "multiple_choice" | "free_text"
+    multiple: Optional[bool] = None
+    options: Optional[List[str]] = None
+
+class SubjectQuestionsResponse(BaseModel):
+    subject: str
+    questions: List[QuestionItem]
+    tip: Optional[str] = None
+
+class MemberAnswer(BaseModel):
+    user_id: int
+    answers: List[str]  # 질문 순서에 맞춰 index 대응
+
 class TopicRecommendRequest(BaseModel):
     room_id: int
-    subject: str
-    answers: List[IceBreakingAnswer]
+    subject: str  # "디자인적 사고" | "세계와 시민" | "데이터분석캡스톤디자인"
+    member_answers: List[MemberAnswer]  # 팀원 전체 답변
 
 class RecommendedTopic(BaseModel):
     topic_name: str
