@@ -1,7 +1,8 @@
 from datetime import datetime, time
-from typing import Optional, List, Any
+from typing import Optional, List, Any,Dict,Literal
 
-from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
+
+from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator, model_validator
 
 
 class DBCheckResponse(BaseModel):
@@ -216,6 +217,7 @@ class RoomCreateResponse(BaseModel):
     status: str
     current_stage: str
     created_at: datetime
+    subject: str
 
     class Config:
         from_attributes = True
@@ -352,3 +354,459 @@ class JoinRoomByInviteCodeResponse(BaseModel):
     room_id: int
     title: str
     current_stage: str
+
+    
+# --- AI Feature Schemas ---
+
+class IceBreakingAnswer(BaseModel):
+    user_id: int
+    question: str
+    answer: str
+
+class IceBreakingRequest(BaseModel):
+    room_id: int
+    answers: List[IceBreakingAnswer]
+
+class IceBreakingResponse(BaseModel):
+    success: bool
+    message: str
+    analysis_report: str
+
+class QuestionItem(BaseModel):
+    index: int
+    text: str
+    type: str  # "multiple_choice" | "free_text"
+    multiple: Optional[bool] = None
+    options: Optional[List[str]] = None
+
+class SubjectQuestionsResponse(BaseModel):
+    subject: str
+    questions: List[QuestionItem]
+    tip: Optional[str] = None
+
+class MemberAnswer(BaseModel):
+    user_id: int
+    answers: List[str]  # 질문 순서에 맞춰 index 대응
+
+class TopicRecommendRequest(BaseModel):
+    room_id: int
+    subject: str  # "디자인적 사고" | "세계와 시민" | "데이터분석캡스톤디자인"
+    member_answers: List[MemberAnswer]  # 팀원 전체 답변
+
+class RecommendedTopic(BaseModel):
+    topic_name: str
+    reason: str
+    expected_effect: str
+
+class TopicRecommendResponse(BaseModel):
+    success: bool
+    topics: List[RecommendedTopic]
+
+class TaskDistributeRequest(BaseModel):
+    room_id: int
+    final_topic: str
+    deadline: Optional[datetime] = None
+
+class GeneratedTask(BaseModel):
+    title: str
+    description: str
+    assigned_user_id: Optional[int]
+    reason: str
+
+class TaskDistributeResponse(BaseModel):
+    success: bool
+    tasks: List[GeneratedTask]
+
+class ChatMessageRequest(BaseModel):
+    room_id: int
+    message: str
+
+class ChatMessageResponse(BaseModel):
+    success: bool
+    reply: str
+
+
+
+
+class IceBreakingRequest(BaseModel):
+    room_id: int = Field(..., description="분석 대상 팀의 room id")
+    title: str = Field(..., description="이 분석 요청의 제목")
+    question: str = Field(
+        default="다음 팀원 정보를 바탕으로 팀 전체 성향, 각 팀원의 특징, 팀원 간 시너지, 어색함을 줄일 수 있는 아이스브레이킹 포인트를 분석해줘.",
+        description="AI에게 전달할 질문"
+    )
+    summary_text: Optional[str] = Field(
+        default=None,
+        description="AI에게 직접 전달할 텍스트 요약"
+    )
+    context_json: Optional[dict[str, Any]] = Field(
+        default=None,
+        description="팀원 정보 및 팀 상황을 구조화된 JSON으로 전달"
+    )
+
+    @model_validator(mode="after")
+    def validate_input(self):
+        if not self.summary_text and not self.context_json:
+            raise ValueError("summary_text 또는 context_json 중 하나는 반드시 제공해야 합니다.")
+        return self
+
+class IceBreakingResponse(BaseModel):
+    success: bool
+    message: str
+    analysis_report: Dict[str, Any]
+    ai_context_id: int
+
+class ChatMessageRequest(BaseModel):
+    room_id: int = Field(..., description="질문 대상 room id")
+    message: str = Field(..., description="사용자 질문")
+
+
+class ChatMessageResponse(BaseModel):
+    success: bool
+    reply: str
+    ai_context_id: int
+
+
+class ChatMessageCreateRequest(BaseModel):
+    message_type: Literal["TEXT", "IMAGE", "FILE", "SYSTEM", "AI"] = Field(
+        default="TEXT",
+        description="메시지 타입"
+    )
+    content: Optional[str] = Field(default=None, description="텍스트 메시지 내용")
+    image_url: Optional[str] = Field(default=None, description="이미지 URL")
+    related_file_id: Optional[int] = Field(default=None, description="첨부 파일 ID")
+
+
+class ChatMessageItem(BaseModel):
+    id: int
+    room_id: int
+    sender_user_id: Optional[int]
+    sender_name: str
+    message_type: str
+    content: Optional[str]
+    image_url: Optional[str]
+    related_file_id: Optional[int]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ChatMessageListResponse(BaseModel):
+    success: bool
+    messages: list[ChatMessageItem]
+
+
+class ChatMessageCreateResponse(BaseModel):
+    success: bool
+    message: str
+    chat_message: ChatMessageItem
+
+
+
+class TodoCreateRequest(BaseModel):
+    room_id: int
+    creator_user_id: int
+    assignee_user_id: Optional[int] = None
+
+    title: str = Field(..., description="할 일 제목")
+    description: Optional[str] = None
+
+    status: Optional[Literal["TODO", "IN_PROGRESS", "BLOCKED", "REVIEW", "DONE", "CANCELLED"]] = "TODO"
+    success_flag: Optional[bool] = None
+    progress_percent: Optional[int] = None
+
+    priority: Optional[Literal["LOW", "MEDIUM", "HIGH", "URGENT"]] = "MEDIUM"
+
+    category: Optional[str] = None
+    tag: Optional[str] = None
+
+    start_date: Optional[datetime] = None
+    due_date: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+
+    estimated_minutes: Optional[int] = None
+    actual_minutes: Optional[int] = None
+
+    visibility: Optional[Literal["PRIVATE", "ROOM", "PUBLIC"]] = "ROOM"
+    source_type: Optional[Literal["MANUAL", "AI", "SYSTEM"]] = "MANUAL"
+    ai_suggested: Optional[bool] = None
+
+    sort_order: Optional[int] = None
+    archived: Optional[bool] = None
+    deleted: Optional[bool] = None
+
+
+class TodoResponse(BaseModel):
+    id: int
+    room_id: int
+    creator_user_id: int
+    assignee_user_id: Optional[int] = None
+
+    title: str
+    description: Optional[str] = None
+
+    status: Optional[str] = None
+    success_flag: Optional[bool] = None
+    progress_percent: Optional[int] = None
+    priority: Optional[str] = None
+
+    category: Optional[str] = None
+    tag: Optional[str] = None
+
+    start_date: Optional[datetime] = None
+    due_date: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+
+    estimated_minutes: Optional[int] = None
+    actual_minutes: Optional[int] = None
+
+    visibility: Optional[str] = None
+    source_type: Optional[str] = None
+    ai_suggested: Optional[bool] = None
+
+    sort_order: Optional[int] = None
+    archived: Optional[bool] = None
+    deleted: Optional[bool] = None
+
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class TodoListResponse(BaseModel):
+    success: bool
+    todos: list[TodoResponse]
+
+
+
+
+class TodoUpdateRequest(BaseModel):
+    assignee_user_id: Optional[int] = None
+    title: Optional[str] = None
+    description: Optional[str] = None
+
+    status: Optional[Literal["TODO", "IN_PROGRESS", "BLOCKED", "REVIEW", "DONE", "CANCELLED"]] = None
+    success_flag: Optional[bool] = None
+    progress_percent: Optional[int] = None
+
+    priority: Optional[Literal["LOW", "MEDIUM", "HIGH", "URGENT"]] = None
+
+    category: Optional[str] = None
+    tag: Optional[str] = None
+
+    start_date: Optional[datetime] = None
+    due_date: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+
+    estimated_minutes: Optional[int] = None
+    actual_minutes: Optional[int] = None
+
+    visibility: Optional[Literal["PRIVATE", "ROOM", "PUBLIC"]] = None
+    source_type: Optional[Literal["MANUAL", "AI", "SYSTEM"]] = None
+    ai_suggested: Optional[bool] = None
+
+    sort_order: Optional[int] = None
+    archived: Optional[bool] = None
+    deleted: Optional[bool] = None
+
+
+class TodoStatusUpdateRequest(BaseModel):
+    status: Literal["TODO", "IN_PROGRESS", "BLOCKED", "REVIEW", "DONE", "CANCELLED"]
+    progress_percent: Optional[int] = None
+    success_flag: Optional[bool] = None
+
+
+class SimpleSuccessResponse(BaseModel):
+    success: bool
+    message: str
+
+
+
+
+TodoStatus = Literal["TODO", "IN_PROGRESS", "BLOCKED", "REVIEW", "DONE", "CANCELLED"]
+TodoPriority = Literal["LOW", "MEDIUM", "HIGH", "URGENT"]
+TodoVisibility = Literal["PRIVATE", "ROOM", "PUBLIC"]
+TodoSourceType = Literal["MANUAL", "AI", "SYSTEM"]
+
+
+class TodoCreateRequest(BaseModel):
+    room_id: int
+    assignee_user_id: Optional[int] = None
+
+    title: str = Field(..., max_length=200)
+    description: Optional[str] = None
+
+    status: TodoStatus = "TODO"
+    success_flag: Optional[bool] = None
+    progress_percent: Optional[int] = Field(default=None, ge=0, le=100)
+
+    priority: TodoPriority = "MEDIUM"
+    category: Optional[str] = Field(default=None, max_length=50)
+    tag: Optional[str] = Field(default=None, max_length=100)
+
+    start_date: Optional[datetime] = None
+    due_date: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+
+    estimated_minutes: Optional[int] = Field(default=None, ge=0)
+    actual_minutes: Optional[int] = Field(default=None, ge=0)
+
+    is_recurring: Optional[bool] = None
+    recurrence_rule: Optional[str] = Field(default=None, max_length=255)
+
+    visibility: TodoVisibility = "ROOM"
+    source_type: TodoSourceType = "MANUAL"
+    ai_suggested: Optional[bool] = None
+
+    sort_order: Optional[int] = None
+    archived: Optional[bool] = False
+    deleted: Optional[bool] = False
+
+
+class TodoUpdateRequest(BaseModel):
+    assignee_user_id: Optional[int] = None
+
+    title: Optional[str] = Field(default=None, max_length=200)
+    description: Optional[str] = None
+
+    status: Optional[TodoStatus] = None
+    success_flag: Optional[bool] = None
+    progress_percent: Optional[int] = Field(default=None, ge=0, le=100)
+
+    priority: Optional[TodoPriority] = None
+    category: Optional[str] = Field(default=None, max_length=50)
+    tag: Optional[str] = Field(default=None, max_length=100)
+
+    start_date: Optional[datetime] = None
+    due_date: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+
+    estimated_minutes: Optional[int] = Field(default=None, ge=0)
+    actual_minutes: Optional[int] = Field(default=None, ge=0)
+
+    is_recurring: Optional[bool] = None
+    recurrence_rule: Optional[str] = Field(default=None, max_length=255)
+
+    visibility: Optional[TodoVisibility] = None
+    source_type: Optional[TodoSourceType] = None
+    ai_suggested: Optional[bool] = None
+
+    sort_order: Optional[int] = None
+    archived: Optional[bool] = None
+    deleted: Optional[bool] = None
+
+
+class TodoStatusUpdateRequest(BaseModel):
+    status: TodoStatus
+    progress_percent: Optional[int] = Field(default=None, ge=0, le=100)
+    success_flag: Optional[bool] = None
+
+
+class TodoReorderItem(BaseModel):
+    todo_id: int
+    sort_order: int
+
+
+class TodoReorderRequest(BaseModel):
+    items: List[TodoReorderItem]
+
+
+class TodoResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    room_id: int
+    creator_user_id: int
+    assignee_user_id: Optional[int]
+
+    title: str
+    description: Optional[str]
+
+    status: TodoStatus
+    success_flag: Optional[bool]
+    progress_percent: Optional[int]
+
+    priority: TodoPriority
+    category: Optional[str]
+    tag: Optional[str]
+
+    start_date: Optional[datetime]
+    due_date: Optional[datetime]
+    completed_at: Optional[datetime]
+
+    estimated_minutes: Optional[int]
+    actual_minutes: Optional[int]
+
+    is_recurring: Optional[bool]
+    recurrence_rule: Optional[str]
+
+    visibility: TodoVisibility
+    source_type: TodoSourceType
+    ai_suggested: Optional[bool]
+
+    sort_order: Optional[int]
+    archived: Optional[bool]
+    deleted: Optional[bool]
+
+    created_at: datetime
+    updated_at: datetime
+
+
+class TodoListResponse(BaseModel):
+    success: bool
+    todos: List[TodoResponse]
+
+
+class TodoSingleResponse(BaseModel):
+    success: bool
+    todo: TodoResponse
+
+
+class MessageResponse(BaseModel):
+    success: bool
+    message: str
+
+
+class AIContextSummaryUpsertRequest(BaseModel):
+    room_id: int
+    title: str
+    summary_text: str
+    context_type: str = "team_project"
+    context_json: Optional[Any] = None
+    question: Optional[str] = None
+    answer: Optional[str] = None
+    is_active: bool = True
+
+
+class AIContextSummaryUpdateRequest(BaseModel):
+    summary_text: str
+
+
+class AIContextResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    room_id: int
+    context_type: str
+    title: str
+    context_json: Optional[Any] = None
+    summary_text: Optional[str] = None
+    question: Optional[str] = None
+    answer: Optional[str] = None
+    version: int
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class AIContextSingleResponse(BaseModel):
+    success: bool
+    ai_context: AIContextResponse
+
+
+class MessageResponse(BaseModel):
+    success: bool
+    message: str

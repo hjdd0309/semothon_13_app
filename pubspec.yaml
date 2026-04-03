@@ -1,6 +1,6 @@
 name: semoton_app
 description: "A new Flutter project."
-publish_to: 'none'
+publish_to: "none"
 
 version: 1.0.0+1
 
@@ -45,3 +45,4 @@ flutter:
     - assets/images/3rd.png
     - assets/images/123.png
     - assets/images/happyface.png
+

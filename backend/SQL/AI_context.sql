@@ -7,13 +7,10 @@ CREATE TABLE ai_contexts (
     title VARCHAR(255) NOT NULL,
     context_json JSON NULL,
     summary_text TEXT NULL,
-	answer TEXT NULL,
-	question TEXT NULL,       
+    answer TEXT NULL,
+    question TEXT NULL,
     version INT NOT NULL DEFAULT 1,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
-
-
-

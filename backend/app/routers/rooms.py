@@ -1,7 +1,7 @@
 import random
 import string
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session, aliased
 
@@ -78,6 +78,67 @@ def _check_room_host(db: Session, room_id: int, user_id: int):
     return member
 
 
+@router.get("/subject/search")
+def get_rooms_by_subject(
+    subject: str = Query(..., description="과목 이름"),
+    db: Session = Depends(get_db),
+):
+    AllMembers = aliased(RoomMember)
+    HostUser = aliased(User)
+    HostProfile = aliased(UserProfile)
+
+    rows = (
+        db.query(
+            Room.id.label("id"),
+            Room.host_user_id.label("host_user_id"),
+            func.coalesce(HostProfile.display_name, HostUser.username).label("host_name"),
+            Room.title.label("title"),
+            Room.description.label("description"),
+            Room.invite_code.label("invite_code"),
+            Room.max_members.label("max_members"),
+            Room.status.label("status"),
+            Room.current_stage.label("current_stage"),
+            Room.created_at.label("created_at"),
+            func.count(AllMembers.id).label("member_count"),
+        )
+        .join(HostUser, HostUser.id == Room.host_user_id)
+        .outerjoin(HostProfile, HostProfile.user_id == HostUser.id)
+        .join(AllMembers, AllMembers.room_id == Room.id)
+        .filter(Room.subject == subject)
+        .group_by(
+            Room.id,
+            Room.host_user_id,
+            HostUser.username,
+            HostProfile.display_name,
+            Room.title,
+            Room.description,
+            Room.invite_code,
+            Room.max_members,
+            Room.status,
+            Room.current_stage,
+            Room.created_at,
+        )
+        .order_by(Room.created_at.desc())
+        .all()
+    )
+
+    return [
+        RoomListItemResponse(
+            id=row.id,
+            host_user_id=row.host_user_id,
+            host_name=row.host_name,
+            title=row.title,
+            description=row.description,
+            invite_code=row.invite_code,
+            max_members=row.max_members,
+            member_count=row.member_count,
+            status=row.status,
+            current_stage=row.current_stage,
+            created_at=row.created_at,
+        )
+        for row in rows
+    ]
+
 @router.post(
     "",
     response_model=RoomCreateResponse,
@@ -100,6 +161,7 @@ def create_room(
         max_members=request.max_members,
         status="WAITING",
         current_stage="WAITING",
+        subject=request.subject.strip() if request.subject else "세계와 시민"
     )
     db.add(new_room)
     db.flush()
@@ -447,3 +509,5 @@ def join_room_by_invite_code(
         title=room.title,
         current_stage=room.current_stage
     )
+
+

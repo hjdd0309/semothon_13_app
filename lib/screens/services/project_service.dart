@@ -16,7 +16,6 @@ class ProjectService {
   String? get accessToken => _accessToken;
   int? get currentUserId => _currentUserId;
 
-
   ProjectService({
     required this.baseUrl,
     http.Client? client,
@@ -356,6 +355,7 @@ class ProjectService {
 
     throw Exception(errorMessage);
   }
+
   Future<List<ChatMessageModel>> fetchChatMessages({
     required String projectNumber,
   }) async {
@@ -413,14 +413,10 @@ class ProjectService {
       );
     }).toList();
   }
+
   Future<void> readAllChat(String projectNumber) async {
     throw UnsupportedError('채팅 읽음 API 없음');
   }
-
-  Future<void> readAllNotifications(String projectNumber) async {
-    throw UnsupportedError('알림 API 없음');
-  }
-
 
   // =========================
   // 공통
