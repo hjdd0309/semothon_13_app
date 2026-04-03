@@ -2585,8 +2585,6 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   }
 
   void showNotificationSheet() async {
-    await _markAllNotificationsAsRead();
-
     if (!mounted) return;
 
     showModalBottomSheet(
@@ -2990,7 +2988,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                     selectedTabIndex = index;
                   });
                   if (index == 2) {
-                    await _markAllChatAsRead();
+                    // _markAllChatAsRead(); // 삭제됨
                   }
                 },
               ),

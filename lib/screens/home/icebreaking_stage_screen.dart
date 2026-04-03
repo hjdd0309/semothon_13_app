@@ -770,7 +770,10 @@ Row(
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
-                builder: (_) => const TopicSelectionStageScreen(),
+                builder: (_) => TopicSelectionStageScreen(
+                  project: widget.project,
+                  service: widget.service,
+                ),
               ),
             );
           },
