@@ -3,6 +3,7 @@ import '../models/project_detail_model.dart';
 import '../services/project_service.dart';
 import 'project_detail_screen.dart';
 import 'topic_selection_stage_screen.dart';
+import '../services/ai_service.dart';
 
 class IcebreakingStageScreen extends StatefulWidget {
   final ProjectDetailModel project;
@@ -27,6 +28,8 @@ class _IcebreakingStageScreenState extends State<IcebreakingStageScreen> {
   static const Color kWine = Color(0xFFA31621);
 
   bool hasStarted = false;
+  bool isSubmitting = false;
+  Map<String, dynamic>? aiResultData;
   int currentQuestionIndex = 0;
   int? selectedOptionIndex;
 
@@ -136,7 +139,7 @@ class _IcebreakingStageScreenState extends State<IcebreakingStageScreen> {
 
       final result = await AIService.getIcebreakingResult(
         1,
-        widget.project.projectTitle,
+        widget.project.projectTitle ?? '기본 프로젝트',
         [
           {"user_id": 1, "answers": ["먼저 말 걸고 분위기를 푼다", "자유롭게 아이디어 많이"]},
           {"user_id": 2, "answers": ["일단 팀 분위기를 살핀다", "짧고 핵심만 빠르게"]},
@@ -151,8 +154,13 @@ class _IcebreakingStageScreenState extends State<IcebreakingStageScreen> {
       });
     } catch (e) {
       setState(() {
-        currentQuestionIndex++;
+        isSubmitting = false;
       });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('AI 분석을 불러오지 못했습니다: $e')),
+        );
+      }
     }
   }
 
@@ -206,28 +214,6 @@ class _IcebreakingStageScreenState extends State<IcebreakingStageScreen> {
       case 3:
       default:
         return '상황에 맞춰 유연하게 움직일 수 있는 팀이에요. 변수 대응과 분위기 적응에 강점이 있어요.';
-    }
-  }
-
-  String _getCuongFeedback() {
-    final counts = [0, 0, 0, 0];
-    for (final answer in selectedAnswers) {
-      counts[answer]++;
-    }
-
-    final maxValue = counts.reduce((a, b) => a > b ? a : b);
-    final topIndex = counts.indexOf(maxValue);
-
-    switch (topIndex) {
-      case 0:
-        return '우리 팀은 주도적으로 일을 추진하는 에너지가 정말 좋아요! 이제 주제를 정할 때 그 추진력을 유지하면서도 팀원들의 아이디어를 모아서 더 창의적인 주제를 만들어보세요!';
-      case 1:
-        return '우리 팀 분위기가 정말 안정적이고 좋아요. 모두가 배려하면서 협력하는 느낌이 들었어요. 이런 분위기를 유지하면서 주제선정 단계에서도 다양한 의견을 적극 나눠보세요!';
-      case 2:
-        return '우리 팀이 신중하게 생각을 정리하는 모습이 멋있었어요. 이런 신중함은 좋지만, 이제는 좀 더 새로운 시도와 창의적인 아이디어도 함께 고려해봐도 좋을 것 같아요!';
-      case 3:
-      default:
-        return '우리 팀이 상황에 맞춰 유연하게 움직이는 게 인상적이었어요! 이런 적응력은 정말 큰 강점이에요. 이제 주제선정에서도 그 유연함을 발휘해서 다양한 가능성을 열어보세요!';
     }
   }
 
@@ -642,7 +628,6 @@ class _IcebreakingStageScreenState extends State<IcebreakingStageScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 쿠옹과 말풍선 디자인
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(22),
@@ -651,57 +636,50 @@ class _IcebreakingStageScreenState extends State<IcebreakingStageScreen> {
               borderRadius: BorderRadius.circular(24),
               border: Border.all(color: kBorder),
             ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Column(
               children: [
-                // 쿠옹 캐릭터 이미지
                 Container(
-                  width: 76,
-                  height: 76,
+                  width: 62,
+                  height: 62,
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: const Color(0xFFFFF2F2),
                     shape: BoxShape.circle,
-                    border: Border.all(
-                      color: const Color(0xFFE0E0E0),
-                      width: 1.5,
-                    ),
+                    border: Border.all(color: const Color(0xFFF1D9D9)),
                   ),
-                  child: ClipOval(
-                    child: Image.asset(
-                      'assets/images/happykhuong.png',
-                      fit: BoxFit.cover,
-                    ),
+                  child: const Icon(
+                    Icons.celebration_outlined,
+                    color: kWine,
+                    size: 30,
                   ),
                 ),
-                const SizedBox(width: 16),
-                // 말풍선 부분
-                Expanded(
-                  child: Container(
-                    margin: const EdgeInsets.only(left: 10),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFF8F8),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFF1D9D9)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('아이스브레이킹 완료',
-                            style: TextStyle(
-                                color: kText,
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800)),
-                        const SizedBox(height: 8),
-                        Text(
-                          _getTeamSummaryTitle(),
-                          style: const TextStyle(
-                              color: kWine,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800),
-                        ),
-                      ],
-                    ),
+                const SizedBox(height: 18),
+                const Text(
+                  '아이스브레이킹 완료',
+                  style: TextStyle(
+                    color: kText,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  aiResultData?['title'] ?? '결과를 불러올 수 없습니다.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: kWine,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  aiResultData?['summary_text'] ?? '-',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: kSub,
+                    fontSize: 14,
+                    height: 1.5,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
@@ -720,7 +698,6 @@ class _IcebreakingStageScreenState extends State<IcebreakingStageScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  '💭 쿠옹의 한줄 피드백',
                   '쿠옹 코치 한줄 브리핑',
                   style: TextStyle(
                     color: kText,
@@ -728,9 +705,9 @@ class _IcebreakingStageScreenState extends State<IcebreakingStageScreen> {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 Text(
-                  _getCuongFeedback(),
+                  aiResultData?['ai_insights'] ?? '상세 결과가 없습니다.',
                   style: const TextStyle(
                     color: kSub,
                     fontSize: 14,
@@ -742,24 +719,24 @@ class _IcebreakingStageScreenState extends State<IcebreakingStageScreen> {
             ),
           ),
           const SizedBox(height: 18),
-          Row(
-            children: [
-              Expanded(
-                child: SizedBox(
-                  height: 52,
-                  child: OutlinedButton(
-                    onPressed: () {
-                      Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ProjectDetailScreen(
-                            project: widget.project,
-                            service: widget.service,
-                          ),
-                        ),
-                        (route) => false,
-                      );
-                    },
+Row(
+  children: [
+    Expanded(
+      child: SizedBox(
+        height: 52,
+        child: OutlinedButton(
+        onPressed: () {
+  Navigator.pushAndRemoveUntil(
+    context,
+    MaterialPageRoute(
+      builder: (_) => ProjectDetailScreen(
+        project: widget.project,
+        service: widget.service,
+      ),
+    ),
+    (route) => false,
+  );
+},
         
           style: OutlinedButton.styleFrom(
             foregroundColor: kText,
@@ -835,9 +812,27 @@ class _IcebreakingStageScreenState extends State<IcebreakingStageScreen> {
       ),
       body: !hasStarted
           ? _buildWaitingScreen()
-          : isFinished
-              ? _buildResultScreen()
-              : _buildQuestionScreen(),
+          : isSubmitting
+              ? const Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(color: kWine),
+                      SizedBox(height: 16),
+                      Text(
+                        "AI가 팀 성향을 분석 중이에요...",
+                        style: TextStyle(
+                          color: kText,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      )
+                    ],
+                  ),
+                )
+              : isFinished
+                  ? _buildResultScreen()
+                  : _buildQuestionScreen(),
     );
   }
 }
