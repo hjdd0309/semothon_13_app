@@ -4,16 +4,22 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app import schemas, models
-from app.models import AIContext, Room, ChatMessage
+from app.models import AIContext, Room, ChatMessage, User
 import json
 import re
 import logging
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import List, Optional, Any
 from sqlalchemy.exc import IntegrityError
+from app.dependencies import get_current_user
 
 from app.database import get_db
 from app.config import settings
+from app.schemas import (
+    AIContextSummaryUpsertRequest,
+    AIContextSummaryUpdateRequest,
+    AIContextSingleResponse,
+)
 
 
 import json
@@ -215,6 +221,86 @@ def build_ice_breaking_prompt(summary_text: str, question: str) -> str:
 - 한국어로 작성할 것.
 """.strip()
 
+
+def build_system_ice_breaking_prompt():
+    return "당신은 팀 분위기 분석과 아이스브레이킹을 도와주는 AI입니다."
+
+
+def safe_json_loads(raw_content: str):
+    try:
+        raw_content = raw_content.strip()
+
+        # ```json 제거
+        if raw_content.startswith("```"):
+            raw_content = raw_content.split("```")[1]
+
+        return json.loads(raw_content)
+
+    except Exception as e:
+        logger.error(f"JSON 파싱 실패: {raw_content}")
+        raise e
+
+
+# --------------------------------------------------
+# 메인 API
+# --------------------------------------------------
+# 1. 스키마와 프롬프트의 키값을 통일 (mood, characters, universal 등)
+def get_ice_breaking_json_schema():
+    return {
+        "name": "ice_breaking",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "mood": {"type": "string"},
+                "characters": {
+                    "type": "array",
+                    "description": "팀원 개개인의 특징 리스트",
+                    "items": {"type": "string"}
+                },
+                "universal": {"type": "string"},
+                "caution": {"type": "string"},
+                "questions": {
+                    "type": "array",
+                    "items": {"type": "string"}
+                },
+                "first_talk": {"type": "string"}
+            },
+            "required": [
+                "mood", "characters", "universal", "caution", "questions", "first_talk"
+            ],
+            "additionalProperties": False
+        }
+    }
+
+def build_ice_breaking_prompt(summary_text: str, question: str) -> str:
+    summary_text = _compact_text(summary_text, max_chars=1600)
+    question = " ".join(question.split())[:300]
+
+    # [중요] 스키마에 정의된 영문 키값을 프롬프트에도 그대로 사용합니다.
+    return f"""
+# [팀 컨텍스트]
+{summary_text}
+
+# [추가 질문/상황]
+{question}
+
+# [출력 규칙 - 반드시 다음 JSON 키를 사용할 것]
+1. mood: 팀의 전체적인 분위기 요약 (상냥한 어조)
+2. characters: 각 팀원의 성향 분석 (예: "홍길동님은 추진력이 좋습니다")
+3. universal: 팀원들이 공통적으로 가진 강점이나 특징
+4. caution: 협업 시 서로 조심하면 좋은 점
+5. questions: 어색함을 깰 수 있는 질문 2~3개
+6. first_talk: 대화를 시작하기 좋은 추천 오프닝 멘트
+규칙:
+- 마크다운 코드블록(```) 사용 금지
+- 설명 문장 금지
+- json prefix 금지
+- JSON 객체 하나만 출력
+- 모든 내용은 '경향성' 수준으로 부드럽게 표현할 것.
+- 한국어로 작성할 것.
+""".strip()
+
 @router.post("/ice-breaking", response_model=schemas.IceBreakingResponse)
 def analyze_ice_breaking(request: schemas.IceBreakingRequest, db: Session = Depends(get_db)):
     if not client:
@@ -222,15 +308,21 @@ def analyze_ice_breaking(request: schemas.IceBreakingRequest, db: Session = Depe
     room = db.query(models.Room).filter(models.Room.id == request.room_id).first()
     if not room:
         raise HTTPException(status_code=404, detail="해당 room이 존재하지 않습니다.")
+
+    # 텍스트 데이터 준비
     if request.summary_text:
         final_summary_text = request.summary_text
     else:
+        # 이 함수가 context_json에서 텍스트를 잘 추출하는지 확인 필요
         final_summary_text = build_summary_text_from_context_json(request.context_json)
+
     if not final_summary_text.strip():
-        raise HTTPException(status_code=400, detail="분석할 팀 정보가 없습니다.")
+         raise HTTPException(status_code=400, detail="분석할 팀 정보가 없습니다.")
+
     try:
+        # 2. AI 호출 (모델명은 gpt-4o-mini 권장, 토큰은 넉넉히 500)
         response = client.chat.completions.create(
-            model=MODEL_NAME,
+            model=MODEL_NAME, 
             messages=[
                 {"role": "system", "content": build_system_ice_breaking_prompt()},
                 {"role": "user", "content": build_ice_breaking_prompt(final_summary_text, request.question)}
@@ -239,18 +331,22 @@ def analyze_ice_breaking(request: schemas.IceBreakingRequest, db: Session = Depe
                 "type": "json_schema",
                 "json_schema": get_ice_breaking_json_schema()
             },
-            temperature=0.7,
-            max_completion_tokens=600
+            temperature=0.7, # 아이스브레이킹은 약간의 창의성이 필요함
+            max_completion_tokens=600  # JSON 구조가 복잡하므로 넉넉하게 설정
         )
         raw_content = response.choices[0].message.content
         analysis_report = json.loads(raw_content)
+
     except Exception as e:
         logger.error(f"AI 호출/파싱 실패: {str(e)}")
         raise HTTPException(status_code=500, detail=f"AI 분석 중 오류 발생: {str(e)}")
+
+    # 3. 기존 컨텍스트 비활성화 및 새 데이터 저장
     db.query(models.AIContext).filter(
         models.AIContext.room_id == request.room_id,
         models.AIContext.context_type == "ice_breaking"
     ).update({"is_active": False}, synchronize_session=False)
+
     new_ai_context = models.AIContext(
         room_id=request.room_id,
         context_type="ice_breaking",
@@ -260,16 +356,17 @@ def analyze_ice_breaking(request: schemas.IceBreakingRequest, db: Session = Depe
         answer=json.dumps(analysis_report, ensure_ascii=False),
         is_active=True
     )
+
     db.add(new_ai_context)
     db.commit()
     db.refresh(new_ai_context)
+
     return schemas.IceBreakingResponse(
         success=True,
         message="분석 완료",
         analysis_report=analysis_report,
         ai_context_id=new_ai_context.id
     )
-
 @router.get("/topics/questions", response_model=schemas.SubjectQuestionsResponse)
 def get_topic_questions(subject: str = Query(..., description="과목명. 예: 디자인적 사고")):
     """
@@ -379,24 +476,42 @@ def recommend_topics(request: schemas.TopicRecommendRequest, db: Session = Depen
                 {"role": "user", "content": user_prompt},
             ],
         )
-        raw_text = response.choices[0].message.content.strip()
+        raw_text = response.choices[0].message.content
+        if not raw_text:
+            raise ValueError("AI 응답 내용이 비어있습니다.")
+        raw_text = raw_text.strip()
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"AI API 호출 오류: {str(e)}")
 
     # 8. JSON 파싱
     try:
-        topics_data = json.loads(raw_text)
+        topics_data = extract_json_safe(raw_text)
+        
+        # 모델이 배열이 아닌 {"topics": [...]} 형태로 응답할 경우를 대비한 방어 로직
+        if isinstance(topics_data, dict):
+            if "topics" in topics_data and isinstance(topics_data["topics"], list):
+                topics_data = topics_data["topics"]
+            else:
+                for val in topics_data.values():
+                    if isinstance(val, list):
+                        topics_data = val
+                        break
+                        
+        if not isinstance(topics_data, list):
+            raise ValueError("예상된 구조(Array)가 아닙니다.")
+
         topics = [
             schemas.RecommendedTopic(
-                topic_name=t["topic_name"],
-                expected_effect=t["expected_effect"],
+                topic_name=t.get("topic_name", "이름 없음"),
+                reason=t.get("reason", "이유 누락"),
+                expected_effect=t.get("expected_effect", "기대효과 누락"),
             )
             for t in topics_data
         ]
-    except (json.JSONDecodeError, KeyError):
+    except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"AI 응답 파싱 실패. 원본 응답: {raw_text[:300]}"
+            detail=f"AI 응답 파싱 실패({str(e)}). 원본 응답: {raw_text[:300]}"
         )
 
     # 9. DB 저장 (방식 A: 추천된 3가지 주제 리스트를 모두 저장)
@@ -434,15 +549,6 @@ logger = logging.getLogger(__name__)
 # ─── Constants ───
 VALID_PRIORITIES = {"LOW", "MEDIUM", "HIGH"}
 DEFAULT_PRIORITY = "MEDIUM"
-
-
-if api_key:
-    client = OpenAI(
-        api_key=api_key,
-        base_url="https://factchat-cloud.mindlogic.ai/v1/gateway",
-    )
-
-MODEL_NAME = "claude-sonnet-4-6"
 
 
 # ─── Helper Functions ───
@@ -517,10 +623,22 @@ def distribute_tasks(
         raise HTTPException(status_code=503, detail="AI 서비스를 사용할 수 없습니다.")
 
     # 0) 방 조회 및 topic 확인
+    logger.info(f"🚀 [DISTRIBUTE] Request received - roomId: {request.room_id}, topic: '{request.final_topic}'")
+    
     room = db.query(models.Room).filter(models.Room.id == request.room_id).first()
     if not room:
         raise HTTPException(status_code=404, detail="방을 찾을 수 없습니다.")
-    if not room.topic:
+    # 요청으로 들어온 주제가 있으면 DB 업데이트 (공백 제거 후 유효성 검사)
+    final_topic_stripped = (request.final_topic or "").strip()
+    if final_topic_stripped and (not room.topic or room.topic != final_topic_stripped):
+        logger.info(f"✅ [DISTRIBUTE] Updating room topic to: {final_topic_stripped}")
+        room.topic = final_topic_stripped
+        db.add(room)
+        db.commit()
+        db.refresh(room)
+
+    if not (room.topic or "").strip():
+        logger.error(f"❌ [DISTRIBUTE] Failed - No topic set for room {request.room_id}")
         raise HTTPException(status_code=400, detail="방에 설정된 주제가 없습니다.")
 
     # 1) 방 멤버 조회
@@ -721,7 +839,7 @@ def distribute_tasks(
 
 def build_system_chat_prompt() -> str:
     return """
-너는 경희대 팀 프로젝트를 돕는 친근한 AI 코치다.
+너는 경희대 팀 프로젝트를 돕는 친근한 AI 코치 쿠옹이야.
 상냥하고 자연스럽게 답하되, 너무 가볍지 말고 실제로 도움이 되게 답해라.
 이모지는 쓰지 말아야 한다.
 반드시 한국어로 답변하라.
@@ -733,7 +851,7 @@ def build_chat_prompt(summary_text: str, question: str) -> str:
     return f"""
 아래는 현재 팀 프로젝트에 대한 요약 정보다.
 
-[팀 정보]
+[팀 정보] 
 {summary_text}
 
 [사용자 질문]
@@ -743,6 +861,8 @@ def build_chat_prompt(summary_text: str, question: str) -> str:
 - 팀 상황에 맞는 실질적인 조언 제공
 - 추상적인 말보다 바로 활용 가능한 답변 제공
 - 필요하면 우선순위나 다음 행동을 제안
+- 팀 정보가 최우선으로 고려해야하는 사항이야
+- 팀 정보에 질문의 내용이 있다면 팀 정보 토대로 무조건 답해야해 무조건
 
 [주의사항]
 - 팀 정보에 없는 내용을 과도하게 단정하지 말 것
@@ -783,11 +903,11 @@ def chat_with_bot(
         .first()
     )
 
-    if ai_context is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="해당 room의 활성 AI 컨텍스트가 존재하지 않습니다.",
-        )
+    # if ai_context is None:
+    #     raise HTTPException(
+    #         status_code=status.HTTP_404_NOT_FOUND,
+    #         detail="해당 room의 활성 AI 컨텍스트가 존재하지 않습니다.",
+    #     )
 
     if not ai_context.summary_text or not ai_context.summary_text.strip():
         raise HTTPException(
@@ -853,3 +973,62 @@ def chat_with_bot(
         reply=answer_text,
         ai_context_id=ai_context.id,
     )
+
+@router.post("/summary", response_model=AIContextSingleResponse, status_code=status.HTTP_201_CREATED)
+def create_ai_context_summary(
+    request: AIContextSummaryUpsertRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    room = db.query(Room).filter(Room.id == request.room_id).first()
+    if not room:
+        raise HTTPException(status_code=404, detail="Room not found")
+
+    latest_ai_context = (
+        db.query(AIContext)
+        .filter(AIContext.room_id == request.room_id)
+        .order_by(AIContext.version.desc(), AIContext.id.desc())
+        .first()
+    )
+
+    next_version = 1
+    if latest_ai_context:
+        next_version = latest_ai_context.version + 1
+
+    new_ai_context = AIContext(
+        room_id=request.room_id,
+        title=request.title,
+        context_type=request.context_type,
+        context_json=request.context_json,
+        summary_text=request.summary_text,
+        question=request.question,
+        answer=request.answer,
+        is_active=request.is_active,
+        version=next_version,
+    )
+
+    db.add(new_ai_context)
+    db.commit()
+    db.refresh(new_ai_context)
+
+    return {"success": True, "ai_context": new_ai_context}
+
+@router.patch("/{ai_context_id}/summary", response_model=AIContextSingleResponse)
+def update_ai_context_summary(
+    ai_context_id: int,
+    request: AIContextSummaryUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    ai_context = db.query(AIContext).filter(AIContext.id == ai_context_id).first()
+    if not ai_context:
+        raise HTTPException(status_code=404, detail="AI context not found")
+
+    ai_context.summary_text = request.summary_text
+    ai_context.version += 1
+
+    db.commit()
+    db.refresh(ai_context)
+
+    return {"success": True, "ai_context": ai_context}
+

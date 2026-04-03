@@ -2,7 +2,7 @@ from fastapi import FastAPI, APIRouter
 from app.database import test_db_connection
 from .schemas import DBCheckResponse
 from fastapi.middleware.cors import CORSMiddleware
-
+from fastapi import Depends
 from app.routers import auth, files, rooms, profile, schedules, task, ai, chat, todos
 from app.database import Base, engine
 from app import models
@@ -55,22 +55,22 @@ def db_check():
             error=str(e)
         )
         
-@app.post("/rooms/{room_id}/generate-topics")
-async def generate_topics(room_id: int, db: Session = Depends(get_db)):
-    room = db.query(models.Room).filter(models.Room.id == room_id).first()
+# @app.post("/rooms/{room_id}/generate-topics")
+# async def generate_topics(room_id: int, db: Session = Depends(get_db)):
+#     room = db.query(models.Room).filter(models.Room.id == room_id).first()
     
-    # 1. AI로부터 3개 주제 리스트를 받아옴
-    ai_res = request_ice_breaking(client, summary_text, "팀 주제 3개 추천해줘")
-    topics_list = ai_res.get("questions", [])
+#     # 1. AI로부터 3개 주제 리스트를 받아옴
+#     ai_res = request_ice_breaking(client, summary_text, "팀 주제 3개 추천해줘")
+#     topics_list = ai_res.get("questions", [])
 
-    # 2. 후보군 저장 (나중에 참고용)
-    room.context_json = {"topics": topics_list}
+#     # 2. 후보군 저장 (나중에 참고용)
+#     room.context_json = {"topics": topics_list}
     
-    # [핵심] 사용자가 선택하기 전에, 일단 첫 번째 주제를 '기본값'으로 확정해버림!
-    if topics_list:
-        room.topic = topics_list[0] 
+#     # [핵심] 사용자가 선택하기 전에, 일단 첫 번째 주제를 '기본값'으로 확정해버림!
+#     if topics_list:
+#         room.topic = topics_list[0] 
     
-    room.current_stage = "ROLE" # 바로 다음 단계로 점프
+#     room.current_stage = "ROLE" # 바로 다음 단계로 점프
     
-    db.commit()
-    return {"message": "주제가 생성 및 자동 확정되었습니다.", "topic": room.topic}
+#     db.commit()
+#     return {"message": "주제가 생성 및 자동 확정되었습니다.", "topic": room.topic}
