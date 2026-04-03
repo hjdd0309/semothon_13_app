@@ -167,7 +167,6 @@ def build_summary_text_from_context_json(context_json: dict) -> str:
 def _compact_text(text: str, max_chars: int = 1600):
     return (text or "")[:max_chars]
 
-
 def get_ice_breaking_json_schema():
     return {
         "name": "ice_breaking",
@@ -178,6 +177,7 @@ def get_ice_breaking_json_schema():
                 "mood": {"type": "string"},
                 "characters": {
                     "type": "array",
+                    "description": "팀원 개개인의 특징 리스트",
                     "items": {"type": "string"}
                 },
                 "universal": {"type": "string"},
@@ -188,20 +188,14 @@ def get_ice_breaking_json_schema():
                 },
                 "first_talk": {"type": "string"}
             },
-            "required": [
-                "mood", "characters", "universal", "caution", "questions", "first_talk"
-            ],
+            "required": ["mood", "characters", "universal", "caution", "questions", "first_talk"],
             "additionalProperties": False
         }
     }
 
-
 def build_ice_breaking_prompt(summary_text: str, question: str) -> str:
-    summary_text = _compact_text(summary_text, 1600)
-
-    question = (question or "")
+    summary_text = _compact_text(summary_text, max_chars=1600)
     question = " ".join(question.split())[:300]
-
     return f"""
 # [팀 컨텍스트]
 {summary_text}
@@ -209,127 +203,66 @@ def build_ice_breaking_prompt(summary_text: str, question: str) -> str:
 # [추가 질문/상황]
 {question}
 
-# [출력 규칙]
-반드시 아래 JSON 형식으로만 응답하세요. 다른 텍스트 금지.
+# [출력 규칙 - 반드시 다음 JSON 키를 사용할 것]
+1. mood: 팀의 전체적인 분위기 요약 (상냥한 어조)
+2. characters: 각 팀원의 성향 분석 (예: "홍길동님은 추진력이 좋습니다")
+3. universal: 팀원들이 공통적으로 가진 강점이나 특징
+4. caution: 협업 시 서로 조심하면 좋은 점
+5. questions: 어색함을 깰 수 있는 질문 2~3개
+6. first_talk: 대화를 시작하기 좋은 추천 오프닝 멘트
 
-{{
-  "mood": "...",
-  "characters": ["...", "..."],
-  "universal": "...",
-  "caution": "...",
-  "questions": ["...", "..."],
-  "first_talk": "..."
-}}
-
-- 한국어로 작성
-- 부드럽고 긍정적인 표현 사용
+- 모든 내용은 '경향성' 수준으로 부드럽게 표현할 것.
+- 한국어로 작성할 것.
 """.strip()
 
-
-def build_system_ice_breaking_prompt():
-    return "당신은 팀 분위기 분석과 아이스브레이킹을 도와주는 AI입니다."
-
-
-def safe_json_loads(raw_content: str):
-    try:
-        raw_content = raw_content.strip()
-
-        # ```json 제거
-        if raw_content.startswith("```"):
-            raw_content = raw_content.split("```")[1]
-
-        return json.loads(raw_content)
-
-    except Exception as e:
-        logger.error(f"JSON 파싱 실패: {raw_content}")
-        raise e
-
-
-# --------------------------------------------------
-# 메인 API
-# --------------------------------------------------
-
 @router.post("/ice-breaking", response_model=schemas.IceBreakingResponse)
-def analyze_ice_breaking(
-    request: schemas.IceBreakingRequest,
-    db: Session = Depends(get_db)
-):
+def analyze_ice_breaking(request: schemas.IceBreakingRequest, db: Session = Depends(get_db)):
     if not client:
         raise HTTPException(status_code=500, detail="API Key is not configured")
-
     room = db.query(models.Room).filter(models.Room.id == request.room_id).first()
     if not room:
         raise HTTPException(status_code=404, detail="해당 room이 존재하지 않습니다.")
-
-    # -----------------------------
-    # 텍스트 준비
-    # -----------------------------
     if request.summary_text:
         final_summary_text = request.summary_text
     else:
         final_summary_text = build_summary_text_from_context_json(request.context_json)
-
-    if not final_summary_text or not final_summary_text.strip():
+    if not final_summary_text.strip():
         raise HTTPException(status_code=400, detail="분석할 팀 정보가 없습니다.")
-
-    # -----------------------------
-    # AI 호출
-    # -----------------------------
     try:
         response = client.chat.completions.create(
             model=MODEL_NAME,
             messages=[
                 {"role": "system", "content": build_system_ice_breaking_prompt()},
-                {
-                    "role": "user",
-                    "content": build_ice_breaking_prompt(
-                        final_summary_text,
-                        request.question
-                    )
-                }
+                {"role": "user", "content": build_ice_breaking_prompt(final_summary_text, request.question)}
             ],
+            response_format={
+                "type": "json_schema",
+                "json_schema": get_ice_breaking_json_schema()
+            },
             temperature=0.7,
-            max_tokens=600
+            max_completion_tokens=600
         )
-
         raw_content = response.choices[0].message.content
-        analysis_report = safe_json_loads(raw_content)
-
+        analysis_report = json.loads(raw_content)
     except Exception as e:
-        logger.error(f"AI 호출 실패: {str(e)}")
+        logger.error(f"AI 호출/파싱 실패: {str(e)}")
         raise HTTPException(status_code=500, detail=f"AI 분석 중 오류 발생: {str(e)}")
-
-    # -----------------------------
-    # DB 저장 (트랜잭션 안정화)
-    # -----------------------------
-    try:
-        db.query(models.AIContext).filter(
-            models.AIContext.room_id == request.room_id,
-            models.AIContext.context_type == "ice_breaking"
-        ).update({"is_active": False}, synchronize_session=False)
-
-        new_ai_context = models.AIContext(
-            room_id=request.room_id,
-            context_type="ice_breaking",
-            title=request.title or f"{room.topic} 분석",
-            summary_text=final_summary_text,
-            question=request.question,
-            answer=json.dumps(analysis_report, ensure_ascii=False),
-            is_active=True
-        )
-
-        db.add(new_ai_context)
-        db.commit()
-        db.refresh(new_ai_context)
-
-    except Exception as e:
-        db.rollback()
-        logger.error(f"DB 저장 실패: {str(e)}")
-        raise HTTPException(status_code=500, detail="DB 저장 중 오류 발생")
-
-    # -----------------------------
-    # 응답
-    # -----------------------------
+    db.query(models.AIContext).filter(
+        models.AIContext.room_id == request.room_id,
+        models.AIContext.context_type == "ice_breaking"
+    ).update({"is_active": False}, synchronize_session=False)
+    new_ai_context = models.AIContext(
+        room_id=request.room_id,
+        context_type="ice_breaking",
+        title=request.title or f"{room.topic} 분석",
+        summary_text=final_summary_text,
+        question=request.question,
+        answer=json.dumps(analysis_report, ensure_ascii=False),
+        is_active=True
+    )
+    db.add(new_ai_context)
+    db.commit()
+    db.refresh(new_ai_context)
     return schemas.IceBreakingResponse(
         success=True,
         message="분석 완료",
