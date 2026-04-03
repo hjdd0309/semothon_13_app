@@ -419,42 +419,6 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     return const Color(0xFF6B7280);
   }
 
-  Future<void> _markAllChatAsRead() async {
-    try {
-      await widget.service.readAllChat(project.projectNumber);
-      await _reloadProject();
-    } on UnsupportedError {
-      final updated = _messages.map((message) {
-        if (message.sender == '나' || message.isRead) return message;
-        return message.copyWith(isRead: true);
-      }).toList();
-
-      if (!mounted) return;
-      setState(() {
-        project = project.copyWith(chatMessages: updated);
-      });
-    } catch (e) {
-      _showErrorSnackBar('채팅 읽음 처리에 실패했어요.');
-    }
-  }
-
-  Future<void> _markAllNotificationsAsRead() async {
-    try {
-      await widget.service.readAllNotifications(project.projectNumber);
-      await _reloadProject();
-    } on UnsupportedError {
-      final updated = notifications
-          .map((item) => item.isRead ? item : item.copyWith(isRead: true))
-          .toList();
-
-      if (!mounted) return;
-      setState(() {
-        project = project.copyWith(notifications: updated);
-      });
-    } catch (e) {
-      _showErrorSnackBar('알림 읽음 처리에 실패했어요.');
-    }
-  }
 
   Future<void> toggleTask(int roleIndex, int taskIndex) async {
     final role = roles[roleIndex];
