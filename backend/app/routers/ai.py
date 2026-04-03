@@ -4,16 +4,22 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app import schemas, models
-from app.models import AIContext, Room, ChatMessage
+from app.models import AIContext, Room, ChatMessage, User
 import json
 import re
 import logging
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import List, Optional, Any
 from sqlalchemy.exc import IntegrityError
+from app.dependencies import get_current_user
 
 from app.database import get_db
 from app.config import settings
+from app.schemas import (
+    AIContextSummaryUpsertRequest,
+    AIContextSummaryUpdateRequest,
+    AIContextSingleResponse,
+)
 
 
 import json
@@ -566,24 +572,42 @@ def recommend_topics(request: schemas.TopicRecommendRequest, db: Session = Depen
                 {"role": "user", "content": user_prompt},
             ],
         )
-        raw_text = response.choices[0].message.content.strip()
+        raw_text = response.choices[0].message.content
+        if not raw_text:
+            raise ValueError("AI 응답 내용이 비어있습니다.")
+        raw_text = raw_text.strip()
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"AI API 호출 오류: {str(e)}")
 
     # 8. JSON 파싱
     try:
-        topics_data = json.loads(raw_text)
+        topics_data = extract_json_safe(raw_text)
+        
+        # 모델이 배열이 아닌 {"topics": [...]} 형태로 응답할 경우를 대비한 방어 로직
+        if isinstance(topics_data, dict):
+            if "topics" in topics_data and isinstance(topics_data["topics"], list):
+                topics_data = topics_data["topics"]
+            else:
+                for val in topics_data.values():
+                    if isinstance(val, list):
+                        topics_data = val
+                        break
+                        
+        if not isinstance(topics_data, list):
+            raise ValueError("예상된 구조(Array)가 아닙니다.")
+
         topics = [
             schemas.RecommendedTopic(
-                topic_name=t["topic_name"],
-                expected_effect=t["expected_effect"],
+                topic_name=t.get("topic_name", "이름 없음"),
+                reason=t.get("reason", "이유 누락"),
+                expected_effect=t.get("expected_effect", "기대효과 누락"),
             )
             for t in topics_data
         ]
-    except (json.JSONDecodeError, KeyError):
+    except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"AI 응답 파싱 실패. 원본 응답: {raw_text[:300]}"
+            detail=f"AI 응답 파싱 실패({str(e)}). 원본 응답: {raw_text[:300]}"
         )
 
     # 9. DB 저장 (방식 A: 추천된 3가지 주제 리스트를 모두 저장)
@@ -621,15 +645,6 @@ logger = logging.getLogger(__name__)
 # ─── Constants ───
 VALID_PRIORITIES = {"LOW", "MEDIUM", "HIGH"}
 DEFAULT_PRIORITY = "MEDIUM"
-
-
-if api_key:
-    client = OpenAI(
-        api_key=api_key,
-        base_url="https://factchat-cloud.mindlogic.ai/v1/gateway",
-    )
-
-MODEL_NAME = "claude-sonnet-4-6"
 
 
 # ─── Helper Functions ───
@@ -704,10 +719,22 @@ def distribute_tasks(
         raise HTTPException(status_code=503, detail="AI 서비스를 사용할 수 없습니다.")
 
     # 0) 방 조회 및 topic 확인
+    logger.info(f"🚀 [DISTRIBUTE] Request received - roomId: {request.room_id}, topic: '{request.final_topic}'")
+    
     room = db.query(models.Room).filter(models.Room.id == request.room_id).first()
     if not room:
         raise HTTPException(status_code=404, detail="방을 찾을 수 없습니다.")
-    if not room.topic:
+    # 요청으로 들어온 주제가 있으면 DB 업데이트 (공백 제거 후 유효성 검사)
+    final_topic_stripped = (request.final_topic or "").strip()
+    if final_topic_stripped and (not room.topic or room.topic != final_topic_stripped):
+        logger.info(f"✅ [DISTRIBUTE] Updating room topic to: {final_topic_stripped}")
+        room.topic = final_topic_stripped
+        db.add(room)
+        db.commit()
+        db.refresh(room)
+
+    if not (room.topic or "").strip():
+        logger.error(f"❌ [DISTRIBUTE] Failed - No topic set for room {request.room_id}")
         raise HTTPException(status_code=400, detail="방에 설정된 주제가 없습니다.")
 
     # 1) 방 멤버 조회
@@ -908,7 +935,7 @@ def distribute_tasks(
 
 def build_system_chat_prompt() -> str:
     return """
-너는 경희대 팀 프로젝트를 돕는 친근한 AI 코치다.
+너는 경희대 팀 프로젝트를 돕는 친근한 AI 코치 쿠옹이야.
 상냥하고 자연스럽게 답하되, 너무 가볍지 말고 실제로 도움이 되게 답해라.
 이모지는 쓰지 말아야 한다.
 반드시 한국어로 답변하라.
@@ -920,7 +947,7 @@ def build_chat_prompt(summary_text: str, question: str) -> str:
     return f"""
 아래는 현재 팀 프로젝트에 대한 요약 정보다.
 
-[팀 정보]
+[팀 정보] 
 {summary_text}
 
 [사용자 질문]
@@ -930,6 +957,8 @@ def build_chat_prompt(summary_text: str, question: str) -> str:
 - 팀 상황에 맞는 실질적인 조언 제공
 - 추상적인 말보다 바로 활용 가능한 답변 제공
 - 필요하면 우선순위나 다음 행동을 제안
+- 팀 정보가 최우선으로 고려해야하는 사항이야
+- 팀 정보에 질문의 내용이 있다면 팀 정보 토대로 무조건 답해야해 무조건
 
 [주의사항]
 - 팀 정보에 없는 내용을 과도하게 단정하지 말 것
@@ -970,11 +999,11 @@ def chat_with_bot(
         .first()
     )
 
-    if ai_context is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="해당 room의 활성 AI 컨텍스트가 존재하지 않습니다.",
-        )
+    # if ai_context is None:
+    #     raise HTTPException(
+    #         status_code=status.HTTP_404_NOT_FOUND,
+    #         detail="해당 room의 활성 AI 컨텍스트가 존재하지 않습니다.",
+    #     )
 
     if not ai_context.summary_text or not ai_context.summary_text.strip():
         raise HTTPException(
@@ -1040,3 +1069,62 @@ def chat_with_bot(
         reply=answer_text,
         ai_context_id=ai_context.id,
     )
+
+@router.post("/summary", response_model=AIContextSingleResponse, status_code=status.HTTP_201_CREATED)
+def create_ai_context_summary(
+    request: AIContextSummaryUpsertRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    room = db.query(Room).filter(Room.id == request.room_id).first()
+    if not room:
+        raise HTTPException(status_code=404, detail="Room not found")
+
+    latest_ai_context = (
+        db.query(AIContext)
+        .filter(AIContext.room_id == request.room_id)
+        .order_by(AIContext.version.desc(), AIContext.id.desc())
+        .first()
+    )
+
+    next_version = 1
+    if latest_ai_context:
+        next_version = latest_ai_context.version + 1
+
+    new_ai_context = AIContext(
+        room_id=request.room_id,
+        title=request.title,
+        context_type=request.context_type,
+        context_json=request.context_json,
+        summary_text=request.summary_text,
+        question=request.question,
+        answer=request.answer,
+        is_active=request.is_active,
+        version=next_version,
+    )
+
+    db.add(new_ai_context)
+    db.commit()
+    db.refresh(new_ai_context)
+
+    return {"success": True, "ai_context": new_ai_context}
+
+@router.patch("/{ai_context_id}/summary", response_model=AIContextSingleResponse)
+def update_ai_context_summary(
+    ai_context_id: int,
+    request: AIContextSummaryUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    ai_context = db.query(AIContext).filter(AIContext.id == ai_context_id).first()
+    if not ai_context:
+        raise HTTPException(status_code=404, detail="AI context not found")
+
+    ai_context.summary_text = request.summary_text
+    ai_context.version += 1
+
+    db.commit()
+    db.refresh(ai_context)
+
+    return {"success": True, "ai_context": ai_context}
+

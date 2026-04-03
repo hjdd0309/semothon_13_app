@@ -1316,10 +1316,10 @@ Widget _buildActionButtons(BuildContext context) {
                   ),
                 ],
               ),
-            ],
+            ),
           ),
         ),
-      ),
+      ],
     );
   }
 
@@ -1381,6 +1381,377 @@ Widget _buildProjectIntroCard() {
     ),
   );
 }
+}
+
+class _ProjectCard extends StatelessWidget {
+  final ProjectDetailModel project;
+  final Color statusColor;
+  final String summaryStatus;
+  final String updatedText;
+  final VoidCallback onTap;
+  final VoidCallback onMoreTap;
+
+  const _ProjectCard({
+    required this.project,
+    required this.statusColor,
+    required this.summaryStatus,
+    required this.updatedText,
+    required this.onTap,
+    required this.onMoreTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Ink(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFCFBFB),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Color(0xFFE7C9C9)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0D000000),
+                blurRadius: 10,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      project.projectTitle,
+                      style: const TextStyle(
+                        color: Color(0xFF3A2A2A),
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  InkWell(
+                    onTap: onMoreTap,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.all(9),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF7EFEF),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.more_horiz,
+                        size: 18,
+                        color: Color(0xFF7D6666),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '#${project.projectNumber}',
+                style: const TextStyle(
+                  color: Color(0xFF7D6666),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  summaryStatus,
+                  style: TextStyle(
+                    color: statusColor,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                updatedText,
+                style: const TextStyle(
+                  color: Color(0xFF7D6666),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 14),
+              const Divider(color: Color(0xFFF0E8E4), height: 1),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _InfoChip(
+                    icon: Icons.group_outlined,
+                    text: '${project.members.length}명',
+                  ),
+                  _InfoChip(
+                    icon: Icons.work_outline,
+                    text: '역할 ${project.roles.length}개',
+                  ),
+                  _InfoChip(
+                    icon: Icons.calendar_today_outlined,
+                    text: '일정 ${project.schedules.length}개',
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _InfoChip({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F1EE),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 17, color: const Color(0xFF7D6666)),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: const TextStyle(
+              color: Color(0xFF3A2A2A),
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DialogField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final String hintText;
+
+  const _DialogField({
+    required this.controller,
+    required this.label,
+    required this.hintText,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xFF3A2A2A),
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          decoration: InputDecoration(
+            hintText: hintText,
+            hintStyle: const TextStyle(
+              color: Color(0xFFA58787),
+              fontSize: 14,
+            ),
+            filled: true,
+            fillColor: _HomeScreenState.inputFillColor,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 14,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(
+                color: _HomeScreenState.borderColor,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(
+                color: _HomeScreenState.primaryColor,
+                width: 1.2,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MenuTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final VoidCallback onTap;
+  final Color? textColor;
+
+  const _MenuTile({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+    this.textColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = textColor ?? const Color(0xFF3A2A2A);
+
+    return ListTile(
+      onTap: onTap,
+      leading: Icon(icon, color: color),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: color,
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      contentPadding: EdgeInsets.zero,
+      minLeadingWidth: 24,
+    );
+  }
+}
+
+class _EmptyProjectView extends StatelessWidget {
+  const _EmptyProjectView();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 28),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFCFBFB),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFEAE1E1)),
+      ),
+      child: const Column(
+        children: [
+          Icon(
+            Icons.folder_open_outlined,
+            size: 34,
+            color: Color(0xFF7D6666),
+          ),
+          SizedBox(height: 12),
+          Text(
+            '아직 프로젝트가 없습니다.',
+            style: TextStyle(
+              color: Color(0xFF3A2A2A),
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          SizedBox(height: 6),
+          Text(
+            '새 프로젝트를 추가해서 시작해보세요.',
+            style: TextStyle(
+              color: Color(0xFF7D6666),
+              fontSize: 14,
+              height: 1.5,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LoadingProjectView extends StatelessWidget {
+  const _LoadingProjectView();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 28),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFCFBFB),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFEAE1E1)),
+      ),
+      child: const Column(
+        children: [
+          SizedBox(
+            width: 28,
+            height: 28,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.4,
+              color: Color(0xFFA31621),
+            ),
+          ),
+          SizedBox(height: 14),
+          Text(
+            '프로젝트를 불러오는 중입니다...',
+            style: TextStyle(
+              color: Color(0xFF7D6666),
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProjectIntroCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      decoration: BoxDecoration(
+        color: softCardColor,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFEAE1E1)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0D000000),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: const Text(
+        '현재 진행 중인 프로젝트와 상태를 한눈에 확인하고, 필요하면 이름이나 목표를 바로 수정해보세요.',
+        style: TextStyle(fontSize: 15, color: Color(0xFF4B3A3A), height: 1.5),
+      ),
+    );
+  }
 }
 
 class _ProjectCard extends StatelessWidget {

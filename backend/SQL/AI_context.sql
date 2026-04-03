@@ -8,11 +8,9 @@ CREATE TABLE ai_contexts (
     context_json JSON NULL,
     summary_text TEXT NULL,
 	answer TEXT NULL,
+	question TEXT NULL,       
     version INT NOT NULL DEFAULT 1,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
-
-ALTER TABLE ai_contexts
-ADD COLUMN question TEXT NULL;

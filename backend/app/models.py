@@ -55,6 +55,7 @@ class Room(Base):
     status = Column(String(50), default="active")
     current_stage = Column(String(50), default="waiting")
     created_at = Column(DateTime, server_default=func.now())
+    subject = Column(String(100),nullable=True)
 
     tasks = relationship("Task", back_populates="room")
 
