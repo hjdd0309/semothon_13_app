@@ -328,7 +328,7 @@ def request_ice_breaking(
         ],
         temperature=0.2,
         top_p=1,
-        max_completion_tokens=300,
+        max_completion_tokens=200,
         response_format={"type": "json_object"},
     )
 
@@ -338,6 +338,7 @@ def request_ice_breaking(
 
     return _validate_ice_breaking_result(data)
 
+# 1. 스키마와 프롬프트의 키값을 통일 (mood, characters, universal 등)
 def get_ice_breaking_json_schema():
     return {
         "name": "ice_breaking",
@@ -348,6 +349,7 @@ def get_ice_breaking_json_schema():
                 "mood": {"type": "string"},
                 "characters": {
                     "type": "array",
+                    "description": "팀원 개개인의 특징 리스트",
                     "items": {"type": "string"}
                 },
                 "universal": {"type": "string"},
@@ -359,28 +361,37 @@ def get_ice_breaking_json_schema():
                 "first_talk": {"type": "string"}
             },
             "required": [
-                "mood",
-                "characters",
-                "universal",
-                "caution",
-                "questions",
-                "first_talk"
+                "mood", "characters", "universal", "caution", "questions", "first_talk"
             ],
             "additionalProperties": False
         }
     }
 
+def build_ice_breaking_prompt(summary_text: str, question: str) -> str:
+    summary_text = _compact_text(summary_text, max_chars=1600)
+    question = " ".join(question.split())[:300]
 
-@router.post(
-    "/ice-breaking",
-    response_model=schemas.IceBreakingResponse,
-    summary="아이스브레이킹 및 팀 성향 분석",
-    description=(
-        "팀원 정보(text 또는 json)를 받아 AI가 팀 전체 성향, 팀원 특징, "
-        "시너지, 아이스브레이킹 포인트를 분석합니다. "
-        "질문과 답변은 ai_contexts 테이블에 저장됩니다."
-    )
-)
+    # [중요] 스키마에 정의된 영문 키값을 프롬프트에도 그대로 사용합니다.
+    return f"""
+# [팀 컨텍스트]
+{summary_text}
+
+# [추가 질문/상황]
+{question}
+
+# [출력 규칙 - 반드시 다음 JSON 키를 사용할 것]
+1. mood: 팀의 전체적인 분위기 요약 (상냥한 어조)
+2. characters: 각 팀원의 성향 분석 (예: "홍길동님은 추진력이 좋습니다")
+3. universal: 팀원들이 공통적으로 가진 강점이나 특징
+4. caution: 협업 시 서로 조심하면 좋은 점
+5. questions: 어색함을 깰 수 있는 질문 2~3개
+6. first_talk: 대화를 시작하기 좋은 추천 오프닝 멘트
+
+- 모든 내용은 '경향성' 수준으로 부드럽게 표현할 것.
+- 한국어로 작성할 것.
+""".strip()
+
+@router.post("/ice-breaking", response_model=schemas.IceBreakingResponse)
 def analyze_ice_breaking(
     request: schemas.IceBreakingRequest,
     db: Session = Depends(get_db)
@@ -388,77 +399,57 @@ def analyze_ice_breaking(
     if not client:
         raise HTTPException(status_code=500, detail="API Key is not configured")
 
-    room = db.query(Room).filter(Room.id == request.room_id).first()
-    if room is None:
+    room = db.query(models.Room).filter(models.Room.id == request.room_id).first()
+    if not room:
         raise HTTPException(status_code=404, detail="해당 room이 존재하지 않습니다.")
 
+    # 텍스트 데이터 준비
     if request.summary_text:
         final_summary_text = request.summary_text
     else:
+        # 이 함수가 context_json에서 텍스트를 잘 추출하는지 확인 필요
         final_summary_text = build_summary_text_from_context_json(request.context_json)
 
-    prompt = build_ice_breaking_prompt(
-        summary_text=final_summary_text,
-        question=request.question
-    )
-    system_prompt = build_system_ice_breaking_prompt()
+    if not final_summary_text.strip():
+         raise HTTPException(status_code=400, detail="분석할 팀 정보가 없습니다.")
 
     try:
+        # 2. AI 호출 (모델명은 gpt-4o-mini 권장, 토큰은 넉넉히 500)
         response = client.chat.completions.create(
-            model=MODEL_NAME,
+            model=MODEL_NAME, 
             messages=[
-                {
-                    "role": "system",
-                    "content": system_prompt,
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
+                {"role": "system", "content": build_system_ice_breaking_prompt()},
+                {"role": "user", "content": build_ice_breaking_prompt(final_summary_text, request.question)}
             ],
             response_format={
                 "type": "json_schema",
                 "json_schema": get_ice_breaking_json_schema()
             },
-            temperature=0.7,
-            max_completion_tokens=300, 
-
+            temperature=0.7, # 아이스브레이킹은 약간의 창의성이 필요함
+            max_completion_tokens=600  # JSON 구조가 복잡하므로 넉넉하게 설정
         )
 
         raw_content = response.choices[0].message.content
-        try:
-            analysis_report = json.loads(raw_content)
-        except:
-            analysis_report = {"raw": raw_content}
-        
+        analysis_report = json.loads(raw_content)
 
-    except json.JSONDecodeError:
-        raise HTTPException(
-            status_code=500,
-            detail="AI 응답을 JSON으로 파싱하지 못했습니다."
-        )
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"AI 분석 호출 중 오류가 발생했습니다: {str(e)}"
-        )
+        logger.error(f"AI 호출/파싱 실패: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"AI 분석 중 오류 발생: {str(e)}")
 
-    db.query(AIContext).filter(
-        AIContext.room_id == request.room_id,
-        AIContext.context_type == "ice_breaking",
-        AIContext.is_active == True
+    # 3. 기존 컨텍스트 비활성화 및 새 데이터 저장
+    db.query(models.AIContext).filter(
+        models.AIContext.room_id == request.room_id,
+        models.AIContext.context_type == "ice_breaking"
     ).update({"is_active": False}, synchronize_session=False)
 
-    new_ai_context = AIContext(
+    new_ai_context = models.AIContext(
         room_id=request.room_id,
         context_type="ice_breaking",
-        title=request.title,
-        context_json=request.context_json,
+        title=request.title or f"{room.topic} 분석",
         summary_text=final_summary_text,
         question=request.question,
-        answer=json.dumps(analysis_report, ensure_ascii=False),  # JSON 문자열로 저장
-        version=1,
-        is_active=True,
+        answer=json.dumps(analysis_report, ensure_ascii=False),
+        is_active=True
     )
 
     db.add(new_ai_context)
@@ -467,8 +458,8 @@ def analyze_ice_breaking(
 
     return schemas.IceBreakingResponse(
         success=True,
-        message="아이스브레이킹 분석이 완료되었습니다.",
-        analysis_report=analysis_report,  # dict 그대로 반환
+        message="분석 완료",
+        analysis_report=analysis_report,
         ai_context_id=new_ai_context.id
     )
 
@@ -842,6 +833,7 @@ def distribute_tasks(
                 {"role": "user", "content": user_prompt},
             ],
             temperature=0.3,
+            max_completion_tokens=250, 
         )
         try:
             api_kwargs["response_format"] = {"type": "json_object"}

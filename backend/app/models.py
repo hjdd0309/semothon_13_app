@@ -48,6 +48,7 @@ class Room(Base):
     host_user_id = Column(BIGINT(unsigned=True), ForeignKey("users.id"), nullable=False)
     title = Column(String(255), nullable=False)
     topic = Column(String(255), nullable=True)
+    context_json = Column(JSON, nullable=True)   
     description = Column(String(500), nullable=True)
     invite_code = Column(String(20), unique=True, nullable=False)
     max_members = Column(Integer, default=10)
