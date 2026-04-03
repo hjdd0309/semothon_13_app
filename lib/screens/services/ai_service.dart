@@ -78,4 +78,31 @@ class AIService {
       throw Exception('Network error: $e');
     }
   }
+
+  // 4. 역할 및 업무 분배 API (DB 저장 포함)
+  static Future<Map<String, dynamic>> distributeTasks(int roomId, String finalTopic) async {
+    final url = Uri.parse('$baseUrl/api/ai/distribute');
+    
+    final Map<String, dynamic> body = {
+      "room_id": roomId,
+      "final_topic": finalTopic,
+      "deadline": null // 향후 필요 시 추가 가능
+    };
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(body),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return json.decode(utf8.decode(response.bodyBytes));
+      } else {
+        throw Exception('Failed to distribute tasks: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Network error: $e');
+    }
+  }
 }

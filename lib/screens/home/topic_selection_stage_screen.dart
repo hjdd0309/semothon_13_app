@@ -22,115 +22,7 @@ class Question {
   });
 }
 
-final Map<String, List<Question>> subjectQuestions = {
-  '세계와 시민': [
-    Question(
-      title: '우리 조가 다뤄봤으면 하는 사회문제 분야는 무엇인가요? (1~2개 선택)',
-      type: QuestionType.multipleChoiceWithOther,
-      options: ['환경/생태', '인권/복지', '생활/안전', '교육/문화', '기술/과학'],
-      maxSelect: 2,
-    ),
-    Question(
-      title: '최근 일상생활에서 불편을 느끼거나 문제라고 생각했던 경험이 있다면 무엇인가요?',
-      type: QuestionType.text,
-    ),
-    Question(
-      title: '해결하는 사회문제의 범위는 어디까지인가요?',
-      type: QuestionType.singleChoice,
-      options: ['캠퍼스', '지역사회', '대한민국/국가 및 글로벌'],
-    ),
-    Question(
-      title: '이번 활동에서 대변하거나 돕고싶은 구체적 대상은 누구인가요?',
-      type: QuestionType.text,
-    ),
-    Question(
-      title: '도전해보고 싶은 해결 방식은 무엇인가요? (1~2개 선택)',
-      type: QuestionType.multipleChoiceWithOther,
-      options: ['숏폼 영상 제작', '오프라인 캠페인', '카드뉴스 제작', 'SNS 운영', '제도 제안'],
-      maxSelect: 2,
-    ),
-  ],
-  '디자인적 사고': [
-    Question(
-      title: '최근 흥미로웠던 개발 주제가 있으신가요? (중복 가능)',
-      type: QuestionType.multipleChoice,
-      options: ['사회 문제 해결', '재미있는 서비스', '기술적으로 도전적인', '창업 아이디어', '생활 편의 서비스'],
-    ),
-    Question(
-      title: '어떤 개발 경험이 있으신가요? (중복 가능)',
-      type: QuestionType.multipleChoice,
-      options: ['디자인 (UI/UX)', '게임 개발', '웹 프로그래밍', '앱 프로그래밍', 'AI / 머신러닝', '시스템 프로그래밍', '데이터 분석'],
-    ),
-    Question(
-      title: '이건 정말 창의적이다라고 생각되시는 아이디어가 있나요?',
-      type: QuestionType.text,
-    ),
-    Question(
-      title: '관심있는 문제 영역이 있나요?',
-      type: QuestionType.multipleChoice,
-      options: ['교육', '환경', '건강', '교통', '커뮤니티', '게임 / 엔터테인먼트', '생산성'],
-    ),
-    Question(
-      title: '프로젝트 결과물이 어디까지 나오면 좋겠나요?',
-      type: QuestionType.singleChoice,
-      options: ['아이디어 기획 중심', '간단한 프로토타입', '핵심 기능 구현', '대부분 기능 구현', '실제 배포 가능 수준'],
-    ),
-  ],
-  '데이터분석캡스톤디자인': [
-    Question(
-      title: '우리 조가 다뤄봤으면 하는 사회문제 분야는 무엇인가요? (1~2개 선택)',
-      type: QuestionType.multipleChoiceWithOther,
-      options: ['환경/생태', '인권/복지', '생활/안전', '교육/문화', '기술/과학'],
-      maxSelect: 2,
-    ),
-    Question(
-      title: '최근 일상생활에서 불편을 느끼거나 문제라고 생각했던 경험이 있다면 무엇인가요?',
-      type: QuestionType.text,
-    ),
-    Question(
-      title: '해결하는 사회문제의 범위는 어디까지인가요?',
-      type: QuestionType.singleChoice,
-      options: ['캠퍼스', '지역사회', '대한민국/국가 및 글로벌'],
-    ),
-    Question(
-      title: '이번 활동에서 대변하거나 돕고싶은 구체적 대상은 누구인가요?',
-      type: QuestionType.text,
-    ),
-    Question(
-      title: '도전해보고 싶은 해결 방식은 무엇인가요? (1~2개 선택)',
-      type: QuestionType.multipleChoiceWithOther,
-      options: ['숏폼 영상 제작', '오프라인 캠페인', '카드뉴스 제작', 'SNS 운영', '제도 제안'],
-      maxSelect: 2,
-    ),
-  ],
-  '데이터분석캡스톤디자인': [
-    Question(
-      title: '가장 흥미를 느끼는 산업/도메인은 무엇인가요? (최대 3개)',
-      type: QuestionType.multipleChoiceWithOther,
-      options: ['스마트시티 / 교통', '헬스케어 / 스포츠', '엔터테인먼트 / 미디어', '금융 / 경제', '소셜 / 커뮤니티'],
-      maxSelect: 3,
-    ),
-    Question(
-      title: '메인으로 다뤄보고 싶은 데이터의 종류는 무엇인가요? (1~2개)',
-      type: QuestionType.multipleChoice,
-      options: ['이미지 / 영상 데이터', '텍스트 데이터', '정형 데이터', '시계열 데이터'],
-      maxSelect: 2,
-    ),
-    Question(
-      title: '우리 팀의 최종 결과물은 어떤 형태였으면 좋겠나요?',
-      type: QuestionType.singleChoice,
-      options: ['웹/앱 서비스', '온디바이스 AI 어플리케이션', '대시보드', '리포트/논문'],
-    ),
-    Question(
-      title: '활용해 보고 싶은 기술 스택이 있나요?',
-      type: QuestionType.text,
-    ),
-    Question(
-      title: '데이터로 해결하고 싶은 불편함이 있다면?',
-      type: QuestionType.text,
-    ),
-  ],
-};
+// subjectQuestions 하드코딩 제거 (백엔드 API로 대체)
 
 // --- 2. 주제 선정 화면 ---
 class TopicSelectionStageScreen extends StatefulWidget {
@@ -159,6 +51,54 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
   bool hasStarted = false;
   int currentQuestionIndex = 0;
   String selectedSubject = '세계와 시민';
+  List<Question> dynamicQuestions = [];
+  bool isLoadingQuestions = false;
+  
+  final List<String> subjects = ['세계와 시민', '디자인적 사고', '데이터분석캡스톤디자인'];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchQuestions();
+  }
+
+  Future<void> _fetchQuestions() async {
+    setState(() {
+      isLoadingQuestions = true;
+    });
+
+    try {
+      final result = await AIService.getTopicQuestions(selectedSubject);
+      final List<dynamic> qList = result['questions'] ?? [];
+      
+      setState(() {
+        dynamicQuestions = qList.map((q) {
+          QuestionType type = QuestionType.text;
+          switch (q['type']) {
+            case 'singleChoice': type = QuestionType.singleChoice; break;
+            case 'multipleChoice': type = QuestionType.multipleChoice; break;
+            case 'multipleChoiceWithOther': type = QuestionType.multipleChoiceWithOther; break;
+          }
+          return Question(
+            title: q['title'],
+            type: type,
+            options: List<String>.from(q['options'] ?? []),
+            maxSelect: q['maxSelect'] ?? 0,
+          );
+        }).toList();
+        isLoadingQuestions = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          isLoadingQuestions = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('질문을 불러오는데 실패했습니다: $e')),
+        );
+      }
+    }
+  }
   Map<int, dynamic> answers = {};
 
   // 텍스트 입력용 컨트롤러 (질문 이동 시 값 유지)
@@ -409,7 +349,7 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
                       isExpanded: true,
                       icon: const Icon(Icons.keyboard_arrow_down_rounded,
                           color: kWine),
-                      items: subjectQuestions.keys.map((String value) {
+                      items: subjects.map((String value) {
                         return DropdownMenuItem<String>(
                           value: value,
                           child: Text(value,
@@ -421,6 +361,7 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
                         setState(() {
                           selectedSubject = newValue!;
                         });
+                        _fetchQuestions();
                       },
                     ),
                   ),
@@ -979,12 +920,24 @@ class RecommendationResultScreen extends StatelessWidget {
   final ProjectDetailModel? project;
   final ProjectService? service;
 
+class RecommendationResultScreen extends StatefulWidget {
+  final List<dynamic> topics;
+  final ProjectDetailModel? project;
+  final ProjectService? service;
+
   const RecommendationResultScreen({
     super.key,
     required this.topics,
     this.project,
     this.service,
   });
+
+  @override
+  State<RecommendationResultScreen> createState() => _RecommendationResultScreenState();
+}
+
+class _RecommendationResultScreenState extends State<RecommendationResultScreen> {
+  int? selectedIndex;
 
   static const Color kCream = Color(0xFFFCFAF7);
   static const Color kCard = Colors.white;
@@ -1080,61 +1033,75 @@ class RecommendationResultScreen extends StatelessWidget {
             // 추천 주제 리스트
             Expanded(
               child: ListView.builder(
-                itemCount: topics.length,
+                itemCount: widget.topics.length,
                 itemBuilder: (context, index) {
-                  final topic = topics[index];
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 16),
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: kCard,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: kBorder),
-                      boxShadow: const [
-                        BoxShadow(
-                            color: Color(0x0D000000),
-                            blurRadius: 8,
-                            offset: Offset(0, 3)),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 34,
-                              height: 34,
-                              decoration: const BoxDecoration(
-                                color: kWine,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Center(
-                                child: Text('${index + 1}',
-                                    style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w800)),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                topic['topic_name'] ?? '주제명 없음',
-                                style: const TextStyle(
-                                    color: kText,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w800),
-                              ),
-                            ),
-                          ],
+                  final topic = widget.topics[index];
+                  final isSelected = selectedIndex == index;
+                  
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        selectedIndex = index;
+                      });
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: isSelected ? const Color(0xFFFFF7F7) : kCard,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: isSelected ? kWine : kBorder,
+                          width: isSelected ? 2 : 1,
                         ),
-                        const SizedBox(height: 16),
-                        _buildInfoRow(
-                            '💡 추천 이유', topic['reason'] ?? ''),
-                        const SizedBox(height: 12),
-                        _buildInfoRow(
-                            '🎯 기대 효과', topic['expected_effect'] ?? ''),
-                      ],
+                        boxShadow: const [
+                          BoxShadow(
+                              color: Color(0x0D000000),
+                              blurRadius: 8,
+                              offset: Offset(0, 3)),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 34,
+                                height: 34,
+                                decoration: BoxDecoration(
+                                  color: isSelected ? kWine : const Color(0xFFF1D9D9),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Center(
+                                  child: Text('${index + 1}',
+                                      style: TextStyle(
+                                          color: isSelected ? Colors.white : kWine,
+                                          fontWeight: FontWeight.w800)),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  topic['topic_name'] ?? '주제명 없음',
+                                  style: const TextStyle(
+                                      color: kText,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800),
+                                ),
+                              ),
+                              if (isSelected)
+                                const Icon(Icons.check_circle, color: kWine, size: 28),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          _buildInfoRow(
+                              '💡 추천 이유', topic['reason'] ?? ''),
+                          const SizedBox(height: 12),
+                          _buildInfoRow(
+                              '🎯 기대 효과', topic['expected_effect'] ?? ''),
+                        ],
+                      ),
                     ),
                   );
                 },
@@ -1180,17 +1147,24 @@ class RecommendationResultScreen extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const RoleAssignmentStageScreen(),
-                        ),
-                      );
-                    },
+                    onPressed: selectedIndex == null 
+                      ? null 
+                      : () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => RoleAssignmentStageScreen(
+                                project: widget.project!,
+                                service: widget.service!,
+                                selectedTopic: widget.topics[selectedIndex!]['topic_name'],
+                              ),
+                            ),
+                          );
+                        },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: kWine,
                       foregroundColor: Colors.white,
+                      disabledBackgroundColor: const Color(0xFFD9D3D3),
                       elevation: 0,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
