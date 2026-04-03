@@ -74,16 +74,20 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
       setState(() {
         dynamicQuestions = qList.map((q) {
           QuestionType type = QuestionType.text;
-          switch (q['type']) {
-            case 'singleChoice': type = QuestionType.singleChoice; break;
-            case 'multipleChoice': type = QuestionType.multipleChoice; break;
-            case 'multipleChoiceWithOther': type = QuestionType.multipleChoiceWithOther; break;
+          final String bType = q['type'] ?? '';
+          final bool isMultiple = q['multiple'] == true;
+
+          if (bType == 'multiple_choice') {
+            type = isMultiple ? QuestionType.multipleChoice : QuestionType.singleChoice;
+          } else if (bType == 'free_text') {
+            type = QuestionType.text;
           }
+
           return Question(
-            title: q['title'],
+            title: q['text'] ?? '',
             type: type,
             options: List<String>.from(q['options'] ?? []),
-            maxSelect: q['maxSelect'] ?? 0,
+            maxSelect: isMultiple ? 3 : 1, // 백엔드에 명시적 maxSelect가 없으므로 추론
           );
         }).toList();
         isLoadingQuestions = false;
@@ -157,6 +161,13 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
 
   void _startSession() {
     if (!isAllReady || isLoadingQuestions) return;
+    if (dynamicQuestions.isEmpty) {
+      _fetchQuestions(); // 다시 시도
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('질문 목록을 불러오는 중입니다. 잠시만 기다려주세요.')),
+      );
+      return;
+    }
     setState(() {
       hasStarted = true;
       currentQuestionIndex = 0;
@@ -238,7 +249,7 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
       }).toList();
 
       final result = await AIService.submitTopicAnswersAndGetRecommendation(
-        1,
+        int.parse(widget.project?.projectNumber ?? '1'),
         selectedSubject,
         [
           {"user_id": 1, "answers": ["웹/앱 서비스", "Python, React", "사회 문제 해결을 위한 앱 만들기"]},
