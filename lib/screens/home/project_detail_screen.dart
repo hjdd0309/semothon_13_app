@@ -93,11 +93,11 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
 
     switch (stageIndex) {
       case 0:
-  screen = IcebreakingStageScreen(
-    project: widget.project,
-    service: widget.service,
-  );
-  break;
+        screen = IcebreakingStageScreen(
+          project: widget.project,
+          service: widget.service,
+        );
+        break;
       case 1:
         screen = TopicSelectionStageScreen(
           project: project,
@@ -527,9 +527,43 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     }();
   }
 
+  void _appendMyLocalMessage({
+    required String text,
+    required bool isFile,
+  }) {
+    final newMessage = ChatMessageModel(
+      id: _nextChatId(),
+      sender: '나',
+      message: text,
+      time: _nowLabel(),
+      isMe: true,
+      isRead: true,
+      isAi: false,
+      isFile: isFile,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _messages = [..._messages, newMessage];
+      project = project.copyWith(chatMessages: _messages);
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollChatToBottom();
+    });
+  }
+
   Future<void> sendChatMessage() async {
     final text = chatController.text.trim();
     if (text.isEmpty || _isSendingChat) return;
+
+    chatController.clear();
+
+    _appendMyLocalMessage(
+      text: text,
+      isFile: false,
+    );
 
     setState(() {
       _isSendingChat = true;
@@ -541,31 +575,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
         message: text,
         isFile: false,
       );
-      chatController.clear();
-      await _loadMessages();
-      await _reloadProject();
-      _scrollChatToBottom();
-    } on UnsupportedError {
-      final updated = [
-        ..._messages,
-        ChatMessageModel(
-          id: _nextChatId(),
-          sender: '나',
-          message: text,
-          time: _nowLabel(),
-          isMe: true,
-          isRead: true,
-          isAi: false,
-          isFile: false,
-        ),
-      ];
 
-      if (!mounted) return;
-      setState(() {
-        project = project.copyWith(chatMessages: updated);
-      });
-      chatController.clear();
-      _scrollChatToBottom();
+      await _reloadProject();
     } catch (e) {
       _showErrorSnackBar('채팅 전송에 실패했어요.');
     } finally {
@@ -598,37 +609,20 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   }
 
   Future<void> _sendAttachmentMessage(String message) async {
+    _appendMyLocalMessage(
+      text: message,
+      isFile: true,
+    );
+
     try {
       await widget.service.sendChat(
         projectNumber: project.projectNumber,
         message: message,
         isFile: true,
       );
-      await _reloadProject();
-      _loadMessages();
-      _scrollChatToBottom();
-    } on UnsupportedError {
-      final updated = [
-        ..._messages,
-        ChatMessageModel(
-          id: _nextChatId(),
-          sender: '나',
-          message: message,
-          time: _nowLabel(),
-          isMe: true,
-          isRead: true,
-          isAi: false,
-          isFile: true,
-        ),
-      ];
 
-      if (!mounted) return;
-      setState(() {
-        project = project.copyWith(chatMessages: updated);
-      });
-      _scrollChatToBottom();
+      await _reloadProject();
     } catch (e) {
-      print(e);
       _showErrorSnackBar('파일 공유에 실패했어요.');
     }
   }
@@ -3448,57 +3442,57 @@ class _OverviewTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-              _SectionCard(
-        title: '프로젝트 단계',
-        icon: Icons.auto_awesome_outlined,
-        buttonText: '보기',
-        onButtonTap: () => onOpenStage(0),
-        child: Column(
-          children: [
-            _ProjectStageTile(
-              title: '아이스브레이킹',
-              subtitle: '완료됨',
-              status: '완료됨',
-              statusColor: const Color(0xFF16C75A),
-              iconBgColor: const Color(0xFF16C75A),
-              icon: Icons.check_circle_outline_rounded,
-              onTap: () => onOpenStage(0),
-            ),
-            const SizedBox(height: 12),
-            _ProjectStageTile(
-              title: '주제선정',
-              subtitle: '완료됨',
-              status: '완료됨',
-              statusColor: const Color(0xFF16C75A),
-              iconBgColor: const Color(0xFF16C75A),
-              icon: Icons.check_circle_outline_rounded,
-              onTap: () => onOpenStage(1),
-            ),
-            const SizedBox(height: 12),
-            _ProjectStageTile(
-              title: '역할분배',
-              subtitle: '완료됨',
-              status: '완료됨',
-              statusColor: const Color(0xFF16C75A),
-              iconBgColor: const Color(0xFF16C75A),
-              icon: Icons.check_circle_outline_rounded,
-              onTap: () => onOpenStage(2),
-            ),
-            const SizedBox(height: 12),
-            _ProjectStageTile(
-              title: '협업진행',
-              subtitle: '진행중',
-              status: '계속하기',
-              statusColor: _ProjectDetailScreenState.kWine,
-              iconBgColor: const Color(0xFF3B82F6),
-              icon: Icons.access_time_rounded,
-              showActionButton: true,
-              onTap: () => onOpenStage(3),
-            ),
-          ],
+        _SectionCard(
+          title: '프로젝트 단계',
+          icon: Icons.auto_awesome_outlined,
+          buttonText: '보기',
+          onButtonTap: () => onOpenStage(0),
+          child: Column(
+            children: [
+              _ProjectStageTile(
+                title: '아이스브레이킹',
+                subtitle: '완료됨',
+                status: '완료됨',
+                statusColor: const Color(0xFF16C75A),
+                iconBgColor: const Color(0xFF16C75A),
+                icon: Icons.check_circle_outline_rounded,
+                onTap: () => onOpenStage(0),
+              ),
+              const SizedBox(height: 12),
+              _ProjectStageTile(
+                title: '주제선정',
+                subtitle: '완료됨',
+                status: '완료됨',
+                statusColor: const Color(0xFF16C75A),
+                iconBgColor: const Color(0xFF16C75A),
+                icon: Icons.check_circle_outline_rounded,
+                onTap: () => onOpenStage(1),
+              ),
+              const SizedBox(height: 12),
+              _ProjectStageTile(
+                title: '역할분배',
+                subtitle: '완료됨',
+                status: '완료됨',
+                statusColor: const Color(0xFF16C75A),
+                iconBgColor: const Color(0xFF16C75A),
+                icon: Icons.check_circle_outline_rounded,
+                onTap: () => onOpenStage(2),
+              ),
+              const SizedBox(height: 12),
+              _ProjectStageTile(
+                title: '협업진행',
+                subtitle: '진행중',
+                status: '계속하기',
+                statusColor: _ProjectDetailScreenState.kWine,
+                iconBgColor: const Color(0xFF3B82F6),
+                icon: Icons.access_time_rounded,
+                showActionButton: true,
+                onTap: () => onOpenStage(3),
+              ),
+            ],
+          ),
         ),
-      ),
-      const SizedBox(height: 16),
+        const SizedBox(height: 16),
         _SectionCard(
           title: '팀원',
           icon: Icons.group_outlined,
@@ -3594,7 +3588,6 @@ class _OverviewTab extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-       
       ],
     );
   }
@@ -5013,7 +5006,7 @@ class _ChatBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool isMine = message.isMe;
+    final bool isMine = message.isMe || message.sender == '나';
     final bool isAi = message.isAi;
 
     final Color bubbleColor = isMine

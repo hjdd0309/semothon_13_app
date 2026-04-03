@@ -688,10 +688,10 @@ class _HomeScreenState extends State<HomeScreen> {
     return null;
   }
 
-  Future<void> _moveToIceBreakingAfterJoin(Map<String, dynamic> data) async {
-    await _loadProjects();
+Future<void> _moveToIceBreakingAfterJoin(Map<String, dynamic> data) async {
+  await _loadProjects();
 
-    if (!mounted) return;
+  if (!mounted) return;
 
     final matchedProject = _findJoinedProjectFromResponse(data) ??
         (projects.isNotEmpty ? projects.first : null);
@@ -708,12 +708,25 @@ class _HomeScreenState extends State<HomeScreen> {
           project: matchedProject,
           service: _projectService,
         ),
-      ),
-    );
-
-    if (!mounted) return;
-    await _loadProjects();
+  final joinedProject = _findJoinedProjectFromResponse(data);
+  if (joinedProject == null) {
+    _showSnackBar('참여한 프로젝트를 찾지 못했어요.');
+    return;
   }
+
+  await Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => IcebreakingStageScreen(
+        project: joinedProject,
+        service: _projectService,
+      ),
+    ),
+  );
+
+  if (!mounted) return;
+  await _loadProjects();
+}
 
   Color _statusColor(String status) {
     if (status.contains('기한 지난')) return const Color(0xFFFF6B2C);
