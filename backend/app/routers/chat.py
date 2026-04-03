@@ -129,11 +129,11 @@ def create_chat_message(
             detail="IMAGE 메시지는 image_url이 필요합니다."
         )
 
-    if request.message_type == "FILE" and not request.related_file_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="FILE 메시지는 related_file_id가 필요합니다."
-        )
+    # if request.message_type == "FILE" and not request.related_file_id:
+    #     raise HTTPException(
+    #         status_code=status.HTTP_400_BAD_REQUEST,
+    #         detail="FILE 메시지는 related_file_id가 필요합니다."
+    #     )
 
     new_message = ChatMessage(
         room_id=room_id,
