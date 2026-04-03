@@ -173,7 +173,6 @@ def build_summary_text_from_context_json(context_json: dict) -> str:
 def _compact_text(text: str, max_chars: int = 1600):
     return (text or "")[:max_chars]
 
-
 def get_ice_breaking_json_schema():
     return {
         "name": "ice_breaking",
@@ -184,6 +183,7 @@ def get_ice_breaking_json_schema():
                 "mood": {"type": "string"},
                 "characters": {
                     "type": "array",
+                    "description": "팀원 개개인의 특징 리스트",
                     "items": {"type": "string"}
                 },
                 "universal": {"type": "string"},
@@ -194,20 +194,14 @@ def get_ice_breaking_json_schema():
                 },
                 "first_talk": {"type": "string"}
             },
-            "required": [
-                "mood", "characters", "universal", "caution", "questions", "first_talk"
-            ],
+            "required": ["mood", "characters", "universal", "caution", "questions", "first_talk"],
             "additionalProperties": False
         }
     }
 
-
 def build_ice_breaking_prompt(summary_text: str, question: str) -> str:
-    summary_text = _compact_text(summary_text, 1600)
-
-    question = (question or "")
+    summary_text = _compact_text(summary_text, max_chars=1600)
     question = " ".join(question.split())[:300]
-
     return f"""
 # [팀 컨텍스트]
 {summary_text}
@@ -215,20 +209,16 @@ def build_ice_breaking_prompt(summary_text: str, question: str) -> str:
 # [추가 질문/상황]
 {question}
 
-# [출력 규칙]
-반드시 아래 JSON 형식으로만 응답하세요. 다른 텍스트 금지.
+# [출력 규칙 - 반드시 다음 JSON 키를 사용할 것]
+1. mood: 팀의 전체적인 분위기 요약 (상냥한 어조)
+2. characters: 각 팀원의 성향 분석 (예: "홍길동님은 추진력이 좋습니다")
+3. universal: 팀원들이 공통적으로 가진 강점이나 특징
+4. caution: 협업 시 서로 조심하면 좋은 점
+5. questions: 어색함을 깰 수 있는 질문 2~3개
+6. first_talk: 대화를 시작하기 좋은 추천 오프닝 멘트
 
-{{
-  "mood": "...",
-  "characters": ["...", "..."],
-  "universal": "...",
-  "caution": "...",
-  "questions": ["...", "..."],
-  "first_talk": "..."
-}}
-
-- 한국어로 작성
-- 부드럽고 긍정적인 표현 사용
+- 모든 내용은 '경향성' 수준으로 부드럽게 표현할 것.
+- 한국어로 작성할 것.
 """.strip()
 
 
@@ -312,13 +302,9 @@ def build_ice_breaking_prompt(summary_text: str, question: str) -> str:
 """.strip()
 
 @router.post("/ice-breaking", response_model=schemas.IceBreakingResponse)
-def analyze_ice_breaking(
-    request: schemas.IceBreakingRequest,
-    db: Session = Depends(get_db)
-):
+def analyze_ice_breaking(request: schemas.IceBreakingRequest, db: Session = Depends(get_db)):
     if not client:
         raise HTTPException(status_code=500, detail="API Key is not configured")
-
     room = db.query(models.Room).filter(models.Room.id == request.room_id).first()
     if not room:
         raise HTTPException(status_code=404, detail="해당 room이 존재하지 않습니다.")
@@ -348,7 +334,6 @@ def analyze_ice_breaking(
             temperature=0.7, # 아이스브레이킹은 약간의 창의성이 필요함
             max_completion_tokens=600  # JSON 구조가 복잡하므로 넉넉하게 설정
         )
-
         raw_content = response.choices[0].message.content
         analysis_report = json.loads(raw_content)
 
