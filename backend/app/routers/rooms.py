@@ -58,14 +58,14 @@ def _get_room_member(db: Session, room_id: int, user_id: int):
     )
 
 
-def _check_room_member(db: Session, room_id: int, user_id: int):
-    member = _get_room_member(db, room_id, user_id)
-    if not member:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="해당 룸의 멤버만 접근할 수 있습니다.",
-        )
-    return member
+# def _check_room_member(db: Session, room_id: int, user_id: int):
+#     member = _get_room_member(db, room_id, user_id)
+#     if not member:
+#         raise HTTPException(
+#             status_code=status.HTTP_403_FORBIDDEN,
+#             detail="해당 룸의 멤버만 접근할 수 있습니다.",
+#         )
+#     return member
 
 
 def _check_room_host(db: Session, room_id: int, user_id: int):
@@ -189,10 +189,10 @@ def create_room(
 def get_room_detail(
     room_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    # current_user: User = Depends(get_current_user),
 ):
     room = _get_room_or_404(db, room_id)
-    _check_room_member(db, room_id, current_user.id)
+    # _check_room_member(db, room_id, current_user.id)
 
     host_row = (
         db.query(
