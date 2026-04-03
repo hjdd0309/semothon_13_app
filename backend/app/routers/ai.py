@@ -493,7 +493,6 @@ def recommend_topics(request: schemas.TopicRecommendRequest, db: Session = Depen
     return schemas.TopicRecommendResponse(success=True, topics=topics)
 
 
-
 # ─── Logger ───
 logger = logging.getLogger(__name__)
 
@@ -574,14 +573,20 @@ def extract_json_safe(text: str) -> dict:
 
 
 # ─── Endpoint ───
-
-@router.post("/distribute", response_model=schemas.TaskDistributeResponse)
+@router.post("/distribute", response_model=schemas.TodoListResponse)  # ← TaskDistributeResponse → TodoListResponse
 def distribute_tasks(
     request: schemas.TaskDistributeRequest,
     db: Session = Depends(get_db),
 ):
     if not client:
         raise HTTPException(status_code=503, detail="AI 서비스를 사용할 수 없습니다.")
+
+    # 0) 방 조회 및 topic 확인
+    room = db.query(models.Room).filter(models.Room.id == request.room_id).first()
+    if not room:
+        raise HTTPException(status_code=404, detail="방을 찾을 수 없습니다.")
+    if not room.topic:
+        raise HTTPException(status_code=400, detail="방에 설정된 주제가 없습니다.")
 
     # 1) 방 멤버 조회
     members: List[models.User] = (
@@ -616,17 +621,16 @@ def distribute_tasks(
         else "자율"
     )
 
-
     system_prompt = (
-    "너는 효율성을 중시하는 '냉철하고 직관적인 IT 프로젝트 매니저'다. "
-    "팀원들에게 업무를 분배할 때, 감성적인 수식어는 배제하고 전문적인 비즈니스 문체(격식체 또는 정중한 평어)를 사용해라. "
-    "단순히 업무를 나열하는 게 아니라, 해당 팀원의 데이터(MBTI, 전공, 보유 스택 등)를 근거로 왜 이 업무가 배정되었는지 논리적으로 설명해야 한다. "
-    "말투 예시: '000님, ~분야를 맡아주세요. ~한 특성을 고려할 때 이 업무에 가장 적합하다고 판단됩니다. ~방향으로 설계해 주시기 바랍니다.'"
+        "너는 효율성을 중시하는 '냉철하고 직관적인 IT 프로젝트 매니저'다. "
+        "팀원들에게 업무를 분배할 때, 감성적인 수식어는 배제하고 전문적인 비즈니스 문체(격식체 또는 정중한 평어)를 사용해라. "
+        "단순히 업무를 나열하는 게 아니라, 해당 팀원의 데이터(MBTI, 전공, 보유 스택 등)를 근거로 왜 이 업무가 배정되었는지 논리적으로 설명해야 한다. "
+        "말투 예시: '000님, ~분야를 맡아주세요. ~한 특성을 고려할 때 이 업무에 가장 적합하다고 판단됩니다. ~방향으로 설계해 주시기 바랍니다.'"
     )
 
     user_prompt = f"""
     # [프로젝트 개요]
-    - 주제: {request.final_topic}
+    - 주제: {room.topic}
     - 마감: {deadline_str}
 
     # [팀원 명단]
@@ -657,13 +661,14 @@ def distribute_tasks(
     # [수행 규칙]
     - **JSON의 'tasks' 리스트 중 첫 번째 요소(index 0)는 반드시 '팀장' 업무여야 함.**
     - 팀장은 다른 실무 업무(1~6번)를 겸직할 수 있으나, '팀장' 업무 자체는 독립된 객체로 먼저 정의할 것.
-    -'0. 팀장' 업무는 프로젝트 성격과 무관하게 반드시 포함하되, 그 외 주제와 관련 없는 업무 카테고리는 과감히 제외할 것. (예: 개발이 필요 없는 기획 중심 프로젝트면 3, 4번 개발 업무 제외)  
+    - '0. 팀장' 업무는 프로젝트 성격과 무관하게 반드시 포함하되, 그 외 주제와 관련 없는 업무 카테고리는 과감히 제외할 것.
     - 'reason' 필드에서 '심장부', '따뜻한', '함께 고민해봐요' 같은 감성적 표현은 절대 금지.
     - 구체적인 근거를 제시할 것 (예: '기술 스택 정보가 없으나, 전공 역량을 고려해 ~를 배정함').
     - 모든 팀원에게 최소 1개 이상의 업무를 반드시 배분할 것.
     - 마감일({deadline_str})을 기준으로 우선순위를 판단할 것.
     - priority, reason, description 항목에서 이모지는 제거할것.
     """
+
     # 3) AI API 호출
     try:
         api_kwargs = dict(
@@ -674,7 +679,6 @@ def distribute_tasks(
             ],
             temperature=0.3,
         )
-        # response_format은 일부 모델/게이트웨이에서 미지원 → 실패 시 제외하고 재시도
         try:
             api_kwargs["response_format"] = {"type": "json_object"}
             response = client.chat.completions.create(**api_kwargs)
@@ -687,10 +691,7 @@ def distribute_tasks(
 
     except Exception as e:
         logger.error("AI API 호출 실패: %s", e, exc_info=True)
-        raise HTTPException(
-            status_code=502,
-            detail="AI 서비스 호출에 실패했습니다. 잠시 후 다시 시도해주세요.",
-        )
+        raise HTTPException(status_code=502, detail="AI 서비스 호출에 실패했습니다. 잠시 후 다시 시도해주세요.")
 
     # 4) JSON 파싱
     try:
@@ -714,19 +715,12 @@ def distribute_tasks(
 
         assigned_id = t.get("assigned_user_id")
         if assigned_id not in valid_user_ids:
-            logger.warning(
-                "잘못된 user_id 반환됨: %s (유효: %s)", assigned_id, valid_user_ids
-            )
-            raise HTTPException(
-                status_code=500,
-                detail=f"\'{title}\': AI가 잘못된 팀원 ID를 반환했습니다.",
-            )
+            logger.warning("잘못된 user_id 반환됨: %s (유효: %s)", assigned_id, valid_user_ids)
+            raise HTTPException(status_code=500, detail=f"'{title}': AI가 잘못된 팀원 ID를 반환했습니다.")
 
         priority = (t.get("priority") or DEFAULT_PRIORITY).upper().strip()
         if priority not in VALID_PRIORITIES:
-            logger.warning(
-                "잘못된 priority '%s' → MEDIUM 폴백 (task: %s)", priority, title
-            )
+            logger.warning("잘못된 priority '%s' → MEDIUM 폴백 (task: %s)", priority, title)
             priority = DEFAULT_PRIORITY
 
         validated_tasks.append(
@@ -746,10 +740,42 @@ def distribute_tasks(
             detail=f"일부 팀원에게 태스크가 배정되지 않았습니다. (미배정 ID: {sorted(unassigned)})",
         )
 
+    # 6) Todo 모델로 변환 및 DB 저장
+    try:
+        todo_objects: List[models.Todo] = []
+        for i, vt in enumerate(validated_tasks):
+            new_todo = models.Todo(
+                room_id=request.room_id,
+                creator_user_id=room.host_user_id,  # ← current_user 대신 방장 ID 사용
+                assignee_user_id=vt["assigned_user_id"],
+                title=vt["title"],
+                description=f"{vt['description']}\n\n[배정 근거]\n{vt['reason']}",
+                priority=vt["priority"],
+                status="TODO",
+                source_type="AI",
+                ai_suggested=True,
+                sort_order=i,
+            )
+            todo_objects.append(new_todo)
 
-                
+        db.add_all(todo_objects)
         db.flush()
         db.commit()
+
+    except IntegrityError as e:
+        db.rollback()
+        logger.error("Todo 저장 중 무결성 오류: %s", e, exc_info=True)
+        raise HTTPException(status_code=400, detail="데이터 저장 중 오류가 발생했습니다.")
+    except Exception as e:
+        db.rollback()
+        logger.error("Todo 저장 실패: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="서비스 내부 오류로 저장에 실패했습니다.")
+
+    # 7) 반환
+    return schemas.TodoListResponse(
+        success=True,
+        todos=todo_objects,
+    )
 
 
 def build_system_chat_prompt() -> str:
