@@ -746,61 +746,11 @@ def distribute_tasks(
             detail=f"일부 팀원에게 태스크가 배정되지 않았습니다. (미배정 ID: {sorted(unassigned)})",
         )
 
-    # 6) DB 저장
-    try:
-        task_objects: List[models.Task] = [
-            models.Task(
-                room_id=request.room_id,
-                assigned_user_id=t["assigned_user_id"],
-                title=t["title"],
-                description=t["description"],
-                priority=t["priority"],
-                due_date=to_utc(request.deadline),   # None이면 None 저장 (안전)
-                created_by="AI",
-                status="TODO",
-                progress_percent=0,
-            )
-            for t in validated_tasks
-        ]
 
-        db.add_all(task_objects)
-        # 각 팀원이 배정받은 태스크의 title을 프로필에 기록합니다.
-        for t in validated_tasks:
-            user_profile = (
-                db.query(models.UserProfile)
-                .filter(models.UserProfile.user_id == t["assigned_user_id"])
-                .first()
-            )
-            if user_profile:
-                user_profile.distributed = t["title"]
                 
         db.flush()
         db.commit()
 
-    except IntegrityError as e:
-        db.rollback()
-        logger.error("DB 무결성 오류: %s", e, exc_info=True)
-        raise HTTPException(
-            status_code=400, detail="데이터 저장 중 무결성 오류가 발생했습니다."
-        )
-    except Exception as e:
-        db.rollback()
-        logger.error("DB 저장 실패: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail="데이터 저장에 실패했습니다.")
-
-    # 7) 응답 반환
-    return schemas.TaskDistributeResponse(
-        success=True,
-        tasks=[
-            schemas.GeneratedTask(
-                title=obj.title,
-                description=obj.description or "",
-                assigned_user_id=obj.assigned_user_id,
-                reason=vt["reason"],
-            )
-            for obj, vt in zip(task_objects, validated_tasks)
-        ],
-    )
 
 def build_system_chat_prompt() -> str:
     return """
