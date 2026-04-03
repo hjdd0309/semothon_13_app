@@ -328,7 +328,7 @@ def request_ice_breaking(
         ],
         temperature=0.2,
         top_p=1,
-        max_completion_tokens=280,
+        max_completion_tokens=210,
         response_format={"type": "json_object"},
     )
 
@@ -421,6 +421,8 @@ def analyze_ice_breaking(
                 "json_schema": get_ice_breaking_json_schema()
             },
             temperature=0.7,
+            max_completion_tokens=250, 
+
         )
 
         raw_content = response.choices[0].message.content
