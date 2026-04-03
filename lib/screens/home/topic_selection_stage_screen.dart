@@ -156,7 +156,7 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
   }
 
   void _startSession() {
-    if (!isAllReady) return;
+    if (!isAllReady || isLoadingQuestions) return;
     setState(() {
       hasStarted = true;
       currentQuestionIndex = 0;
@@ -170,7 +170,7 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
   }
 
   void _goNext() {
-    final questions = subjectQuestions[selectedSubject]!;
+    final questions = dynamicQuestions;
 
     if (currentQuestionIndex < questions.length - 1) {
       setState(() {
@@ -472,7 +472,7 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
 
   // ──────────────────── 질문 화면 ────────────────────
   Widget _buildQuestionScreen() {
-    final questions = subjectQuestions[selectedSubject]!;
+    final questions = dynamicQuestions;
     final currentQuestion = questions[currentQuestionIndex];
     final double progress = (currentQuestionIndex + 1) / questions.length;
 
@@ -915,11 +915,6 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
 }
 
 // --- 3. 추천 결과 화면 ---
-class RecommendationResultScreen extends StatelessWidget {
-  final List<dynamic> topics;
-  final ProjectDetailModel? project;
-  final ProjectService? service;
-
 class RecommendationResultScreen extends StatefulWidget {
   final List<dynamic> topics;
   final ProjectDetailModel? project;
@@ -1115,13 +1110,13 @@ class _RecommendationResultScreenState extends State<RecommendationResultScreen>
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () {
-                      if (project != null && service != null) {
+                      if (widget.project != null && widget.service != null) {
                         Navigator.of(context).pushAndRemoveUntil(
                           MaterialPageRoute(
                             settings: const RouteSettings(name: 'ProjectDetailScreen'),
                             builder: (_) => ProjectDetailScreen(
-                              project: project!,
-                              service: service!,
+                              project: widget.project!,
+                              service: widget.service!,
                             ),
                           ),
                           (route) => route.isFirst,
