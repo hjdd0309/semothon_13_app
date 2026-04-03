@@ -558,6 +558,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     final text = chatController.text.trim();
     if (text.isEmpty || _isSendingChat) return;
 
+    FocusScope.of(context).unfocus();
     chatController.clear();
 
     _appendMyLocalMessage(
@@ -580,10 +581,11 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     } catch (e) {
       _showErrorSnackBar('채팅 전송에 실패했어요.');
     } finally {
-      if (!mounted) return;
-      setState(() {
-        _isSendingChat = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isSendingChat = false;
+        });
+      }
     }
   }
 
@@ -609,6 +611,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   }
 
   Future<void> _sendAttachmentMessage(String message) async {
+    FocusScope.of(context).unfocus();
+
     _appendMyLocalMessage(
       text: message,
       isFile: true,
@@ -2391,73 +2395,44 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   }
 
   void showAttachmentOptions() {
+    FocusScope.of(context).unfocus();
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) {
         return Container(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 30),
           decoration: const BoxDecoration(
-            color: Color(0xFFFFFCFB),
+            color: Colors.white,
             borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-            boxShadow: [
-              BoxShadow(
-                color: Color(0x1A000000),
-                blurRadius: 18,
-                offset: Offset(0, -4),
-              ),
-            ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const _SheetHandle(),
-              const SizedBox(height: 20),
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  '첨부 방식 선택',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: kText,
-                  ),
+              Container(
+                width: 42,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE5DDD8),
+                  borderRadius: BorderRadius.circular(99),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
               _AttachOptionTile(
-                icon: Icons.photo_library_outlined,
-                title: '사진 보관함',
-                onTap: () async {
-                  Navigator.pop(context);
-                  await _pickImageFromGallery();
-                },
+                icon: Icons.image_outlined,
+                title: '갤러리에서 사진 선택',
+                onTap: _pickImageFromGallery,
               ),
               _AttachOptionTile(
                 icon: Icons.camera_alt_outlined,
-                title: '카메라',
-                onTap: () async {
-                  Navigator.pop(context);
-                  await _pickImageFromCamera();
-                },
+                title: '카메라로 사진 촬영',
+                onTap: _pickImageFromCamera,
               ),
               _AttachOptionTile(
                 icon: Icons.insert_drive_file_outlined,
-                title: '파일',
-                onTap: () async {
-                  Navigator.pop(context);
-                  await _pickFileFromDevice();
-                },
-              ),
-              _AttachOptionTile(
-                icon: Icons.link_outlined,
-                title: '링크',
-                onTap: () async {
-                  Navigator.pop(context);
-                  await _sendAttachmentMessage(
-                    'https://example.com\n링크를 공유했습니다.',
-                  );
-                },
+                title: '파일 첨부',
+                onTap: _pickFileFromDevice,
               ),
             ],
           ),
