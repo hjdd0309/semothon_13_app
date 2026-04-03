@@ -217,6 +217,7 @@ class RoomCreateResponse(BaseModel):
     status: str
     current_stage: str
     created_at: datetime
+    subject: str
 
     class Config:
         from_attributes = True
