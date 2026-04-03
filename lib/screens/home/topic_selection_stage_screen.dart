@@ -6,7 +6,12 @@ import '../services/project_service.dart';
 import '../services/ai_service.dart';
 
 // --- 1. 데이터 모델 및 모든 과목 질문 데이터 ---
-enum QuestionType { singleChoice, multipleChoice, text, multipleChoiceWithOther }
+enum QuestionType {
+  singleChoice,
+  multipleChoice,
+  text,
+  multipleChoiceWithOther
+}
 
 class Question {
   final String title;
@@ -53,7 +58,7 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
   String selectedSubject = '세계와 시민';
   List<Question> dynamicQuestions = [];
   bool isLoadingQuestions = false;
-  
+
   final List<String> subjects = ['세계와 시민', '디자인적 사고', '데이터분석캡스톤디자인'];
 
   @override
@@ -70,7 +75,7 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
     try {
       final result = await AIService.getTopicQuestions(selectedSubject);
       final List<dynamic> qList = result['questions'] ?? [];
-      
+
       setState(() {
         dynamicQuestions = qList.map((q) {
           QuestionType type = QuestionType.text;
@@ -78,7 +83,9 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
           final bool isMultiple = q['multiple'] == true;
 
           if (bType == 'multiple_choice') {
-            type = isMultiple ? QuestionType.multipleChoice : QuestionType.singleChoice;
+            type = isMultiple
+                ? QuestionType.multipleChoice
+                : QuestionType.singleChoice;
           } else if (bType == 'free_text') {
             type = QuestionType.text;
           }
@@ -103,6 +110,7 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
       }
     }
   }
+
   Map<int, dynamic> answers = {};
 
   // 텍스트 입력용 컨트롤러 (질문 이동 시 값 유지)
@@ -113,10 +121,10 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
   final Map<int, TextEditingController> _otherControllers = {};
 
   final List<Map<String, dynamic>> participants = [
-    {'name': '현정', 'ready': true},
-    {'name': '서연', 'ready': true},
-    {'name': '유나', 'ready': true},
-    {'name': '민지', 'ready': true},
+    {'name': 'user_1', 'ready': true},
+    {'name': 'user_2', 'ready': true},
+    {'name': 'user_3', 'ready': true},
+    {'name': '표지훈', 'ready': true},
   ];
 
   final List<Color> cardColors = [
@@ -252,44 +260,52 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
         int.parse(widget.project?.projectNumber ?? '1'),
         selectedSubject,
         [
-          {"user_id": 1, "answers": ["웹/앱 서비스", "Python, React", "사회 문제 해결을 위한 앱 만들기"]},
-          {"user_id": 2, "answers": ["간단한 프로토타입", "디자인 위주 진행 희망"]},
+          {
+            "user_id": 1,
+            "answers": ["웹/앱 서비스", "Python, React", "사회 문제 해결을 위한 앱 만들기"]
+          },
+          {
+            "user_id": 2,
+            "answers": ["간단한 프로토타입", "디자인 위주 진행 희망"]
+          },
           {"user_id": 3, "answers": myAnswers}
         ],
       );
 
-    List<Map<String, String>> dummyTopics = [
-      {
-        'topic_name': '지역 주민 참여형 도시 안전 모니터링 플랫폼',
-        'reason':
-        '우리 팀원들 중에 안전 문제에 관심 있는 친구들이 많아서 골랐어요! 실제로 앱으로 만들기도 쉽고, 지역 사회에 도움이 될 것 같아서 추천했어요.',
-        'expected_effect':
-        '주민들이 직접 참여하면서 안전한 동네 만들기에 동참할 수 있을 거예요. 앱 개발 실전 경험도 쌓고, 지역 공동체도 더 단단해질 것 같아요!',
-      },
-      {
-        'topic_name': '다문화 가정 자녀 교육 지원 커뮤니티 서비스',
-        'reason':
-        '교육 분야에 관심 있는 팀원들이 많았고, 특히 다문화 학생들을 도와주는 게 의미 있을 것 같아서 골랐어요. 우리 주변에서도 이런 도움이 필요할 때가 많더라고요.',
-        'expected_effect':
-        '아이들이 언어 때문에 힘들어하지 않도록 도와줄 수 있을 거예요. 지역 사회 사람들도 함께 참여하면서 서로 더 잘 이해하게 될 것 같아요!',
-      },
-      {
-        'topic_name': '청년 사회참여를 위한 온라인 정책 제안 캠페인',
-        'reason':
-        '청년들이 사회 문제에 관심이 많다는 걸 보고 골랐어요. 정책 참여가 어렵게 느껴지는 친구들에게 쉽게 다가갈 수 있는 방법이 필요할 것 같아서 추천했어요.',
-        'expected_effect':
-        '청년들의 목소리가 정책에 반영될 수 있도록 도와줄 거예요. 온라인으로 쉽게 참여할 수 있게 하면 더 많은 친구들이 관심 가져줄 것 같아요!',
-      },
-    ];
+      List<Map<String, String>> dummyTopics = [
+        {
+          'topic_name': '지역 주민 참여형 도시 안전 모니터링 플랫폼',
+          'reason':
+              '우리 팀원들 중에 안전 문제에 관심 있는 친구들이 많아서 골랐어요! 실제로 앱으로 만들기도 쉽고, 지역 사회에 도움이 될 것 같아서 추천했어요.',
+          'expected_effect':
+              '주민들이 직접 참여하면서 안전한 동네 만들기에 동참할 수 있을 거예요. 앱 개발 실전 경험도 쌓고, 지역 공동체도 더 단단해질 것 같아요!',
+        },
+        {
+          'topic_name': '다문화 가정 자녀 교육 지원 커뮤니티 서비스',
+          'reason':
+              '교육 분야에 관심 있는 팀원들이 많았고, 특히 다문화 학생들을 도와주는 게 의미 있을 것 같아서 골랐어요. 우리 주변에서도 이런 도움이 필요할 때가 많더라고요.',
+          'expected_effect':
+              '아이들이 언어 때문에 힘들어하지 않도록 도와줄 수 있을 거예요. 지역 사회 사람들도 함께 참여하면서 서로 더 잘 이해하게 될 것 같아요!',
+        },
+        {
+          'topic_name': '청년 사회참여를 위한 온라인 정책 제안 캠페인',
+          'reason':
+              '청년들이 사회 문제에 관심이 많다는 걸 보고 골랐어요. 정책 참여가 어렵게 느껴지는 친구들에게 쉽게 다가갈 수 있는 방법이 필요할 것 같아서 추천했어요.',
+          'expected_effect':
+              '청년들의 목소리가 정책에 반영될 수 있도록 도와줄 거예요. 온라인으로 쉽게 참여할 수 있게 하면 더 많은 친구들이 관심 가져줄 것 같아요!',
+        },
+      ];
       if (!mounted) return;
       Navigator.pop(context); // close dialog
 
       final List<dynamic> rawTopics = result['topics'] ?? [];
-      final List<Map<String, String>> realTopics = rawTopics.map((t) => {
-        'topic_name': t['topic_name']?.toString() ?? '',
-        'reason': t['reason']?.toString() ?? '',
-        'expected_effect': t['expected_effect']?.toString() ?? ''
-      }).toList();
+      final List<Map<String, String>> realTopics = rawTopics
+          .map((t) => {
+                'topic_name': t['topic_name']?.toString() ?? '',
+                'reason': t['reason']?.toString() ?? '',
+                'expected_effect': t['expected_effect']?.toString() ?? ''
+              })
+          .toList();
 
       Navigator.push(
         context,
@@ -309,8 +325,6 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
       );
     }
   }
-
-
 
   // ──────────────────── 시작 화면 ────────────────────
   Widget _buildStartScreen() {
@@ -348,7 +362,7 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
                 const SizedBox(height: 18),
                 Container(
                   padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFFF7F7),
                     borderRadius: BorderRadius.circular(16),
@@ -401,7 +415,7 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
                 ),
                 const SizedBox(height: 14),
                 ...participants.map(
-                      (member) => Padding(
+                  (member) => Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
@@ -472,8 +486,7 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
                     borderRadius: BorderRadius.circular(16)),
               ),
               child: const Text('시작하기',
-                  style:
-                  TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
             ),
           ),
         ],
@@ -550,7 +563,7 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
                     border: Border.all(color: const Color(0xFFF1D9D9)),
                   ),
                   child:
-                  const Icon(Icons.edit_document, color: kWine, size: 28),
+                      const Icon(Icons.edit_document, color: kWine, size: 28),
                 ),
                 const SizedBox(height: 18),
                 Text(
@@ -618,8 +631,7 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
                 child: SizedBox(
                   height: 52,
                   child: ElevatedButton(
-                    onPressed:
-                    _isCurrentQuestionAnswered() ? _goNext : null,
+                    onPressed: _isCurrentQuestionAnswered() ? _goNext : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: kWine,
                       foregroundColor: Colors.white,
@@ -712,15 +724,14 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                                 content:
-                                Text('최대 ${q.maxSelect}개까지만 선택 가능합니다.')),
+                                    Text('최대 ${q.maxSelect}개까지만 선택 가능합니다.')),
                           );
                           _otherSelected[index] = false;
                           return;
                         }
                       } else {
                         // 기타 해제 시 기타 텍스트 제거
-                        list.removeWhere(
-                                (e) => !q.options.contains(e));
+                        list.removeWhere((e) => !q.options.contains(e));
                         otherCtrl.clear();
                       }
                     } else {
@@ -736,7 +747,7 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
                 borderRadius: BorderRadius.circular(18),
                 child: Container(
                   padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFFFAF5),
                     borderRadius: BorderRadius.circular(18),
@@ -753,8 +764,7 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
                           color: otherOn ? kWine : Colors.white,
                           shape: BoxShape.circle,
                           border: Border.all(
-                              color:
-                              otherOn ? kWine : const Color(0xFFE3D8D4)),
+                              color: otherOn ? kWine : const Color(0xFFE3D8D4)),
                         ),
                         child: Center(
                           child: Text(
@@ -795,8 +805,7 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
                         borderSide: const BorderSide(color: kBorder)),
                     focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
-                        borderSide:
-                        const BorderSide(color: kWine, width: 1.5)),
+                        borderSide: const BorderSide(color: kWine, width: 1.5)),
                     contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 14),
                   ),
@@ -844,17 +853,15 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
                 _getOtherController(index).clear();
               } else {
                 List<String> currentAnswers =
-                (answers[index] as List).cast<String>();
+                    (answers[index] as List).cast<String>();
                 if (isSelected) {
                   currentAnswers.remove(option);
                 } else {
-                  if (q.maxSelect == 0 ||
-                      currentAnswers.length < q.maxSelect) {
+                  if (q.maxSelect == 0 || currentAnswers.length < q.maxSelect) {
                     currentAnswers.add(option);
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                        content:
-                        Text('최대 ${q.maxSelect}개까지만 선택 가능합니다.')));
+                        content: Text('최대 ${q.maxSelect}개까지만 선택 가능합니다.')));
                   }
                 }
               }
@@ -862,8 +869,7 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
           },
           borderRadius: BorderRadius.circular(18),
           child: Container(
-            padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
               color: bgColor,
               borderRadius: BorderRadius.circular(18),
@@ -880,8 +886,7 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
                     color: isSelected ? kWine : Colors.white,
                     shape: BoxShape.circle,
                     border: Border.all(
-                        color:
-                        isSelected ? kWine : const Color(0xFFE3D8D4)),
+                        color: isSelected ? kWine : const Color(0xFFE3D8D4)),
                   ),
                   child: Center(
                     child: Text(
@@ -918,7 +923,7 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
         scrolledUnderElevation: 0,
         foregroundColor: kText,
         title:
-        const Text('주제선정', style: TextStyle(fontWeight: FontWeight.w800)),
+            const Text('주제선정', style: TextStyle(fontWeight: FontWeight.w800)),
       ),
       body: !hasStarted ? _buildStartScreen() : _buildQuestionScreen(),
     );
@@ -939,10 +944,12 @@ class RecommendationResultScreen extends StatefulWidget {
   });
 
   @override
-  State<RecommendationResultScreen> createState() => _RecommendationResultScreenState();
+  State<RecommendationResultScreen> createState() =>
+      _RecommendationResultScreenState();
 }
 
-class _RecommendationResultScreenState extends State<RecommendationResultScreen> {
+class _RecommendationResultScreenState
+    extends State<RecommendationResultScreen> {
   int? selectedIndex;
 
   static const Color kCream = Color(0xFFFCFAF7);
@@ -1043,7 +1050,7 @@ class _RecommendationResultScreenState extends State<RecommendationResultScreen>
                 itemBuilder: (context, index) {
                   final topic = widget.topics[index];
                   final isSelected = selectedIndex == index;
-                  
+
                   return GestureDetector(
                     onTap: () {
                       setState(() {
@@ -1076,13 +1083,16 @@ class _RecommendationResultScreenState extends State<RecommendationResultScreen>
                                 width: 34,
                                 height: 34,
                                 decoration: BoxDecoration(
-                                  color: isSelected ? kWine : const Color(0xFFF1D9D9),
+                                  color: isSelected
+                                      ? kWine
+                                      : const Color(0xFFF1D9D9),
                                   shape: BoxShape.circle,
                                 ),
                                 child: Center(
                                   child: Text('${index + 1}',
                                       style: TextStyle(
-                                          color: isSelected ? Colors.white : kWine,
+                                          color:
+                                              isSelected ? Colors.white : kWine,
                                           fontWeight: FontWeight.w800)),
                                 ),
                               ),
@@ -1097,12 +1107,12 @@ class _RecommendationResultScreenState extends State<RecommendationResultScreen>
                                 ),
                               ),
                               if (isSelected)
-                                const Icon(Icons.check_circle, color: kWine, size: 28),
+                                const Icon(Icons.check_circle,
+                                    color: kWine, size: 28),
                             ],
                           ),
                           const SizedBox(height: 16),
-                          _buildInfoRow(
-                              '💡 추천 이유', topic['reason'] ?? ''),
+                          _buildInfoRow('💡 추천 이유', topic['reason'] ?? ''),
                           const SizedBox(height: 12),
                           _buildInfoRow(
                               '🎯 기대 효과', topic['expected_effect'] ?? ''),
@@ -1124,7 +1134,8 @@ class _RecommendationResultScreenState extends State<RecommendationResultScreen>
                       if (widget.project != null && widget.service != null) {
                         Navigator.of(context).pushAndRemoveUntil(
                           MaterialPageRoute(
-                            settings: const RouteSettings(name: 'ProjectDetailScreen'),
+                            settings: const RouteSettings(
+                                name: 'ProjectDetailScreen'),
                             builder: (_) => ProjectDetailScreen(
                               project: widget.project!,
                               service: widget.service!,
@@ -1134,7 +1145,8 @@ class _RecommendationResultScreenState extends State<RecommendationResultScreen>
                         );
                       } else {
                         Navigator.of(context).popUntil((route) {
-                          return route.settings.name == 'ProjectDetailScreen' || route.isFirst;
+                          return route.settings.name == 'ProjectDetailScreen' ||
+                              route.isFirst;
                         });
                       }
                     },
@@ -1153,20 +1165,22 @@ class _RecommendationResultScreenState extends State<RecommendationResultScreen>
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: selectedIndex == null 
-                      ? null 
-                      : () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => RoleAssignmentStageScreen(
-                                project: widget.project!,
-                                service: widget.service!,
-                                selectedTopic: widget.topics[selectedIndex!]['topic_name'] ?? '',
+                    onPressed: selectedIndex == null
+                        ? null
+                        : () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => RoleAssignmentStageScreen(
+                                  project: widget.project!,
+                                  service: widget.service!,
+                                  selectedTopic: widget.topics[selectedIndex!]
+                                          ['topic_name'] ??
+                                      '',
+                                ),
                               ),
-                            ),
-                          );
-                        },
+                            );
+                          },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: kWine,
                       foregroundColor: Colors.white,
@@ -1204,9 +1218,7 @@ class _RecommendationResultScreenState extends State<RecommendationResultScreen>
         children: [
           Text(label,
               style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: kWine)),
+                  fontSize: 14, fontWeight: FontWeight.w800, color: kWine)),
           const SizedBox(height: 6),
           Text(content,
               style: const TextStyle(

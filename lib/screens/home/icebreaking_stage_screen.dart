@@ -3,7 +3,6 @@ import '../models/project_detail_model.dart';
 import '../services/project_service.dart';
 import 'project_detail_screen.dart';
 import 'topic_selection_stage_screen.dart';
-import '../services/ai_service.dart';
 
 class IcebreakingStageScreen extends StatefulWidget {
   final ProjectDetailModel project;
@@ -34,10 +33,10 @@ class _IcebreakingStageScreenState extends State<IcebreakingStageScreen> {
   int? selectedOptionIndex;
 
   final List<Map<String, dynamic>> participants = [
-    {'name': '현정', 'ready': true},
-    {'name': '서연', 'ready': true},
-    {'name': '유나', 'ready': true},
-    {'name': '민지', 'ready': true},
+    {'name': 'user_1', 'ready': true},
+    {'name': 'user_2', 'ready': true},
+    {'name': 'user_3', 'ready': true},
+    {'name': '표지훈', 'ready': true},
   ];
 
   final List<Map<String, dynamic>> questions = [
@@ -90,7 +89,8 @@ class _IcebreakingStageScreenState extends State<IcebreakingStageScreen> {
 
   final List<int> selectedAnswers = [];
 
-  bool get isAllReady => participants.every((member) => member['ready'] == true);
+  bool get isAllReady =>
+      participants.every((member) => member['ready'] == true);
 
   double get progress => (currentQuestionIndex + 1) / questions.length;
 
@@ -102,6 +102,7 @@ class _IcebreakingStageScreenState extends State<IcebreakingStageScreen> {
       currentQuestionIndex = 0;
       selectedOptionIndex = null;
       selectedAnswers.clear();
+      aiResultData = null;
     });
   }
 
@@ -130,95 +131,50 @@ class _IcebreakingStageScreenState extends State<IcebreakingStageScreen> {
     }
   }
 
-  void _finishIcebreaking() async {
+  Future<void> _finishIcebreaking() async {
     setState(() {
       isSubmitting = true;
     });
 
-    try {
-      List<String> myTextAnswers = [];
-      for (int i = 0; i < selectedAnswers.length; i++) {
-        myTextAnswers.add(questions[i]['options'][selectedAnswers[i]]);
-      }
+    await Future.delayed(const Duration(seconds: 1));
 
-      final result = await AIService.getIcebreakingResult(
-        int.parse(widget.project.projectNumber),
-        widget.project.projectTitle ?? '기본 프로젝트',
-        [
-          {"user_id": 1, "answers": ["먼저 말 걸고 분위기를 푼다", "자유롭게 아이디어 많이"]},
-          {"user_id": 2, "answers": ["일단 팀 분위기를 살핀다", "짧고 핵심만 빠르게"]},
-          {"user_id": 3, "answers": myTextAnswers}
-        ]
-      );
+    const fixedMembers = [
+      'user_1: 전체 흐름과 구조를 먼저 생각하는 전략형',
+      'user_2: 일단 실행해보는 추진력 있는 행동형',
+      'user_3: 꼼꼼하게 검증하고 오류를 잡는 디테일형',
+      '표지훈: 팀원들을 연결하고 분위기를 조율하는 균형형',
+    ];
 
-      setState(() {
-        isSubmitting = false;
-        aiResultData = result;
-        currentQuestionIndex++; // 완료 상태로 렌더링되게 함
-      });
-    } catch (e) {
-      setState(() {
-        isSubmitting = false;
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('AI 분석을 불러오지 못했습니다: $e')),
-        );
-      }
-    }
+    setState(() {
+      isSubmitting = false;
+      aiResultData = {
+        'analysis_report': {
+          'mood': '우리 팀은 전략형·행동형·디테일형·균형형이 잘 섞인 조화로운 팀이에요',
+          'universal': '각자 다른 강점을 가진 팀원들이 모여 있어서 역할을 잘 나누면 높은 시너지를 낼 수 있어요. '
+              '초반에는 전체 방향을 잡아줄 사람, 바로 실행할 사람, 세부 검토를 맡을 사람, '
+              '팀 분위기를 조율할 사람의 균형이 아주 좋아요.',
+          'first_talk': 'user_1: 전체 흐름과 구조를 먼저 생각하는 전략형\n'
+              'user_2: 일단 실행해보는 추진력 있는 행동형\n'
+              'user_3: 꼼꼼하게 검증하고 오류를 잡는 디테일형\n'
+              '표지훈: 팀원들을 연결하고 분위기를 조율하는 균형형',
+          'caution':
+              '초반 회의에서 역할을 명확히 나누고, 진행 중간마다 전략·실행·검토·조율 포인트를 체크하면 더 안정적으로 협업할 수 있어요.',
+          'members': fixedMembers,
+        }
+      };
+      currentQuestionIndex++;
+    });
   }
 
   void _restartSession() {
     setState(() {
       hasStarted = false;
+      isSubmitting = false;
       currentQuestionIndex = 0;
       selectedOptionIndex = null;
       selectedAnswers.clear();
+      aiResultData = null;
     });
-  }
-
-  String _getTeamSummaryTitle() {
-    final counts = [0, 0, 0, 0];
-    for (final answer in selectedAnswers) {
-      counts[answer]++;
-    }
-
-    final maxValue = counts.reduce((a, b) => a > b ? a : b);
-    final topIndex = counts.indexOf(maxValue);
-
-    switch (topIndex) {
-      case 0:
-        return '우리 팀은 주도형 성향이 강해요';
-      case 1:
-        return '우리 팀은 균형형 성향이 강해요';
-      case 2:
-        return '우리 팀은 신중형 성향이 강해요';
-      case 3:
-      default:
-        return '우리 팀은 적응형 성향이 강해요';
-    }
-  }
-
-  String _getTeamSummaryDescription() {
-    final counts = [0, 0, 0, 0];
-    for (final answer in selectedAnswers) {
-      counts[answer]++;
-    }
-
-    final maxValue = counts.reduce((a, b) => a > b ? a : b);
-    final topIndex = counts.indexOf(maxValue);
-
-    switch (topIndex) {
-      case 0:
-        return '의견 제시와 추진력이 좋은 팀이에요. 초반 방향 설정과 실행 속도가 강점이 될 수 있어요.';
-      case 1:
-        return '서로 의견을 조율하며 무난하게 협업할 가능성이 커요. 팀 분위기를 안정적으로 이끌 수 있어요.';
-      case 2:
-        return '생각을 정리하고 현실성을 검토하는 데 강한 팀이에요. 역할 분배와 일정 설계에서 장점이 커요.';
-      case 3:
-      default:
-        return '상황에 맞춰 유연하게 움직일 수 있는 팀이에요. 변수 대응과 분위기 적응에 강점이 있어요.';
-    }
   }
 
   Widget _buildWaitingScreen() {
@@ -613,7 +569,9 @@ class _IcebreakingStageScreenState extends State<IcebreakingStageScreen> {
                 ),
               ),
               child: Text(
-                currentQuestionIndex == questions.length - 1 ? '결과 보기' : '다음 질문',
+                currentQuestionIndex == questions.length - 1
+                    ? '결과 보기'
+                    : '다음 질문',
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
@@ -627,6 +585,9 @@ class _IcebreakingStageScreenState extends State<IcebreakingStageScreen> {
   }
 
   Widget _buildResultScreen() {
+    final members =
+        (aiResultData?['analysis_report']?['members'] as List<dynamic>? ?? []);
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(18),
       child: Column(
@@ -702,17 +663,44 @@ class _IcebreakingStageScreenState extends State<IcebreakingStageScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  '쿠옹 코치 한줄 브리핑',
+                  '팀원별 분석 결과',
                   style: TextStyle(
                     color: kText,
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
+                ...members.map(
+                  (item) => Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFFAFA),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFF0D9D9)),
+                      ),
+                      child: Text(
+                        item.toString(),
+                        style: const TextStyle(
+                          color: kText,
+                          fontSize: 14,
+                          height: 1.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
                 Text(
-                  aiResultData?['analysis_report']?['first_talk'] ?? 
-                  aiResultData?['analysis_report']?['caution'] ?? '상세 결과가 없습니다.',
+                  aiResultData?['analysis_report']?['caution'] ??
+                      '상세 결과가 없습니다.',
                   style: const TextStyle(
                     color: kSub,
                     fontSize: 14,
@@ -724,79 +712,99 @@ class _IcebreakingStageScreenState extends State<IcebreakingStageScreen> {
             ),
           ),
           const SizedBox(height: 18),
-Row(
-  children: [
-    Expanded(
-      child: SizedBox(
-        height: 52,
-        child: OutlinedButton(
-        onPressed: () {
-  Navigator.pushAndRemoveUntil(
-    context,
-    MaterialPageRoute(
-      builder: (_) => ProjectDetailScreen(
-        project: widget.project,
-        service: widget.service,
-      ),
-    ),
-    (route) => false,
-  );
-},
-        
-          style: OutlinedButton.styleFrom(
-            foregroundColor: kText,
-            backgroundColor: Colors.white,
-            side: const BorderSide(color: kBorder),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-          ),
-          child: const Text(
-            '돌아가기',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ),
-      ),
-    ),
-    const SizedBox(width: 12),
-    Expanded(
-      child: SizedBox(
-        height: 52,
-        child: ElevatedButton(
-          onPressed: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => TopicSelectionStageScreen(
-                  project: widget.project,
-                  service: widget.service,
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 52,
+                  child: OutlinedButton(
+                    onPressed: () {
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ProjectDetailScreen(
+                            project: widget.project,
+                            service: widget.service,
+                          ),
+                        ),
+                        (route) => false,
+                      );
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: kText,
+                      backgroundColor: Colors.white,
+                      side: const BorderSide(color: kBorder),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: const Text(
+                      '돌아가기',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            );
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: kWine,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              const SizedBox(width: 12),
+              Expanded(
+                child: SizedBox(
+                  height: 52,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => TopicSelectionStageScreen(
+                            project: widget.project,
+                            service: widget.service,
+                          ),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: kWine,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: const Text(
+                      '주제선정 가기',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: TextButton(
+              onPressed: _restartSession,
+              style: TextButton.styleFrom(
+                foregroundColor: kWine,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              child: const Text(
+                '다시 시작하기',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ),
           ),
-          child: const Text(
-            '주제선정 가기',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ),
-      ),
-    ),
-  ],
-),
         ],
       ),
     );
@@ -804,7 +812,8 @@ Row(
 
   @override
   Widget build(BuildContext context) {
-    final bool isFinished = hasStarted && currentQuestionIndex >= questions.length;
+    final bool isFinished =
+        hasStarted && currentQuestionIndex >= questions.length;
 
     return Scaffold(
       backgroundColor: kCream,
@@ -828,13 +837,13 @@ Row(
                       CircularProgressIndicator(color: kWine),
                       SizedBox(height: 16),
                       Text(
-                        "AI가 팀 성향을 분석 중이에요...",
+                        '팀 성향 결과를 정리하고 있어요...',
                         style: TextStyle(
                           color: kText,
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
                         ),
-                      )
+                      ),
                     ],
                   ),
                 )
