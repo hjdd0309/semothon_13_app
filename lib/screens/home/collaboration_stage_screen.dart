@@ -142,27 +142,7 @@ class _CollaborationStageScreenState
             fontWeight: FontWeight.w600,
           ),
         ),
-        actions: const [
-          Padding(
-            padding: EdgeInsets.only(right: 18),
-            child: Center(
-              child: Row(
-                children: [
-                  Icon(Icons.auto_awesome_outlined, color: kPrimary, size: 18),
-                  SizedBox(width: 4),
-                  Text(
-                    '협업 진행중',
-                    style: TextStyle(
-                      color: kPrimary,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+        
       ),
       body: SafeArea(
         child: ListView(
