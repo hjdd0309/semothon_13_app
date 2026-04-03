@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/project_detail_model.dart';
 import '../services/project_service.dart';
+import 'project_detail_screen.dart';
 
 class RoleAssignmentStageScreen extends StatefulWidget {
   final ProjectDetailModel project;
@@ -183,7 +184,14 @@ class _RoleAssignmentStageScreenState extends State<RoleAssignmentStageScreen> {
               width: double.infinity,
               height: 54,
               child: ElevatedButton(
-                onPressed: _showCompleteSnack,
+                onPressed: () {
+                  _showCompleteSnack();
+
+                  Future.delayed(const Duration(milliseconds: 500), () {
+                    if (!mounted) return;
+                    Navigator.pop(context);
+                  });
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: kWine,
                   foregroundColor: Colors.white,
