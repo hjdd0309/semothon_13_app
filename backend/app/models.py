@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, func, ForeignKey, Text, Enum, Integer, Time, JSON, Boolean, BigInteger,text
+from sqlalchemy import Column, String, DateTime, func, ForeignKey, Text, Enum, Integer, Time, JSON, Boolean, BigInteger,text, CheckConstraint, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.mysql import BIGINT
 from app.database import Base
@@ -37,6 +37,7 @@ class UserProfile(Base):
     updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
     hobby = Column(String(255), nullable=True)
     role = Column(String(255), nullable=True)
+    distributed = Column(String(255), nullable=True)
     user = relationship("User", back_populates="profile")
 
 
@@ -183,3 +184,90 @@ class ChatMessage(Base):
     created_at = Column(DateTime,nullable=False,server_default=text("CURRENT_TIMESTAMP"))
 
     sender = relationship("User", foreign_keys=[sender_user_id])
+
+    from sqlalchemy import (
+    Column,
+    BigInteger,
+    ForeignKey,
+    String,
+    Text,
+    Enum,
+    DateTime,
+    text,
+)
+from sqlalchemy.orm import relationship
+
+class Todo(Base):
+    __tablename__ = "todos"
+
+    id = Column(BigInteger().with_variant(BigInteger, "mysql"), primary_key=True, autoincrement=True, comment="할 일 PK")
+
+    room_id = Column(BigInteger().with_variant(BigInteger, "mysql"), ForeignKey("rooms.id", ondelete="CASCADE"), nullable=False, comment="소속 room ID")
+    creator_user_id = Column(BigInteger().with_variant(BigInteger, "mysql"), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, comment="할 일 생성자")
+    assignee_user_id = Column(BigInteger().with_variant(BigInteger, "mysql"), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, comment="담당자")
+
+    title = Column(String(200), nullable=False, comment="할 일 제목")
+    description = Column(Text, nullable=True, comment="할 일 상세 설명")
+
+    status = Column(
+        Enum("TODO", "IN_PROGRESS", "BLOCKED", "REVIEW", "DONE", "CANCELLED", name="todo_status_enum"),
+        nullable=False,
+        server_default="TODO",
+        comment="진행 상태",
+    )
+
+    success_flag = Column(Boolean, nullable=True, comment="최종 성공 여부")
+    progress_percent = Column(nullable=True, type_=__import__("sqlalchemy").Integer, comment="진행률 0~100")
+
+    priority = Column(
+        Enum("LOW", "MEDIUM", "HIGH", "URGENT", name="todo_priority_enum"),
+        nullable=False,
+        server_default="MEDIUM",
+        comment="우선순위",
+    )
+
+    category = Column(String(50), nullable=True, comment="카테고리")
+    tag = Column(String(100), nullable=True, comment="태그")
+
+    start_date = Column(DateTime, nullable=True, comment="작업 시작일")
+    due_date = Column(DateTime, nullable=True, comment="마감일")
+    completed_at = Column(DateTime, nullable=True, comment="완료 시각")
+
+    estimated_minutes = Column(__import__("sqlalchemy").Integer, nullable=True, comment="예상 소요 시간")
+    actual_minutes = Column(__import__("sqlalchemy").Integer, nullable=True, comment="실제 소요 시간")
+
+    is_recurring = Column(Boolean, nullable=True, comment="반복 작업 여부")
+    recurrence_rule = Column(String(255), nullable=True, comment="반복 규칙")
+
+    visibility = Column(
+        Enum("PRIVATE", "ROOM", "PUBLIC", name="todo_visibility_enum"),
+        nullable=False,
+        server_default="ROOM",
+        comment="공개 범위",
+    )
+
+    source_type = Column(
+        Enum("MANUAL", "AI", "SYSTEM", name="todo_source_type_enum"),
+        nullable=False,
+        server_default="MANUAL",
+        comment="생성 출처",
+    )
+
+    ai_suggested = Column(Boolean, nullable=True, comment="AI 추천 생성 여부")
+
+    sort_order = Column(__import__("sqlalchemy").Integer, nullable=True, comment="정렬 순서")
+    archived = Column(Boolean, nullable=True, comment="보관 여부")
+    deleted = Column(Boolean, nullable=True, comment="소프트 삭제 여부")
+
+    created_at = Column(DateTime, nullable=False, server_default=func.now(), comment="생성 시각")
+    updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now(), comment="수정 시각")
+
+    __table_args__ = (
+        CheckConstraint("progress_percent BETWEEN 0 AND 100", name="ck_todos_progress_percent"),
+        Index("idx_todos_room", "room_id"),
+        Index("idx_todos_creator", "creator_user_id"),
+        Index("idx_todos_assignee", "assignee_user_id"),
+        Index("idx_todos_status", "status"),
+        Index("idx_todos_due_date", "due_date"),
+        Index("idx_todos_room_sort_order", "room_id", "sort_order"),
+    )

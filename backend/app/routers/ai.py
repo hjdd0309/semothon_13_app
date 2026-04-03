@@ -633,6 +633,7 @@ def distribute_tasks(
     {team_context}
 
     # [주요 업무 카테고리]
+    0. 팀장 : 프로젝트 전반적인 관리와 총괄
     1. 자료 조사 및 시장 분석: 주제 관련 데이터 수집 및 경쟁 서비스 분석
     2. 서비스 기획 및 요구사항 정의: 기능 리스트업 및 프로세스 설계
     3. 백엔드 시스템 설계 및 개발: API 명세, DB 스키마 및 서버 로직 구현
@@ -654,7 +655,9 @@ def distribute_tasks(
     }}
 
     # [수행 규칙]
-    - 주제와 관련 없는 업무 카테고리는 과감히 제외할 것. (예: 보고서 중심 프로젝트면, 개발 업무는 제외)
+    - **JSON의 'tasks' 리스트 중 첫 번째 요소(index 0)는 반드시 '팀장' 업무여야 함.**
+    - 팀장은 다른 실무 업무(1~6번)를 겸직할 수 있으나, '팀장' 업무 자체는 독립된 객체로 먼저 정의할 것.
+    -'0. 팀장' 업무는 프로젝트 성격과 무관하게 반드시 포함하되, 그 외 주제와 관련 없는 업무 카테고리는 과감히 제외할 것. (예: 개발이 필요 없는 기획 중심 프로젝트면 3, 4번 개발 업무 제외)  
     - 'reason' 필드에서 '심장부', '따뜻한', '함께 고민해봐요' 같은 감성적 표현은 절대 금지.
     - 구체적인 근거를 제시할 것 (예: '기술 스택 정보가 없으나, 전공 역량을 고려해 ~를 배정함').
     - 모든 팀원에게 최소 1개 이상의 업무를 반드시 배분할 것.
@@ -761,6 +764,16 @@ def distribute_tasks(
         ]
 
         db.add_all(task_objects)
+        # 각 팀원이 배정받은 태스크의 title을 프로필에 기록합니다.
+        for t in validated_tasks:
+            user_profile = (
+                db.query(models.UserProfile)
+                .filter(models.UserProfile.user_id == t["assigned_user_id"])
+                .first()
+            )
+            if user_profile:
+                user_profile.distributed = t["title"]
+                
         db.flush()
         db.commit()
 

@@ -15,6 +15,7 @@ CREATE TABLE user_profiles (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT UNSIGNED NOT NULL UNIQUE,
     display_name VARCHAR(50) NOT NULL,
+    distributed VARCHAR(255) NULL,
     mbti VARCHAR(10) NULL,
     major VARCHAR(100) NULL,
     bio TEXT NULL,

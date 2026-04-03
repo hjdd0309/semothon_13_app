@@ -1,6 +1,7 @@
 from datetime import datetime, time
 from typing import Optional, List, Any,Dict,Literal
 
+
 from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator, model_validator
 
 
@@ -499,3 +500,270 @@ class ChatMessageCreateResponse(BaseModel):
     success: bool
     message: str
     chat_message: ChatMessageItem
+
+
+
+class TodoCreateRequest(BaseModel):
+    room_id: int
+    creator_user_id: int
+    assignee_user_id: Optional[int] = None
+
+    title: str = Field(..., description="할 일 제목")
+    description: Optional[str] = None
+
+    status: Optional[Literal["TODO", "IN_PROGRESS", "BLOCKED", "REVIEW", "DONE", "CANCELLED"]] = "TODO"
+    success_flag: Optional[bool] = None
+    progress_percent: Optional[int] = None
+
+    priority: Optional[Literal["LOW", "MEDIUM", "HIGH", "URGENT"]] = "MEDIUM"
+
+    category: Optional[str] = None
+    tag: Optional[str] = None
+
+    start_date: Optional[datetime] = None
+    due_date: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+
+    estimated_minutes: Optional[int] = None
+    actual_minutes: Optional[int] = None
+
+    visibility: Optional[Literal["PRIVATE", "ROOM", "PUBLIC"]] = "ROOM"
+    source_type: Optional[Literal["MANUAL", "AI", "SYSTEM"]] = "MANUAL"
+    ai_suggested: Optional[bool] = None
+
+    sort_order: Optional[int] = None
+    archived: Optional[bool] = None
+    deleted: Optional[bool] = None
+
+
+class TodoResponse(BaseModel):
+    id: int
+    room_id: int
+    creator_user_id: int
+    assignee_user_id: Optional[int] = None
+
+    title: str
+    description: Optional[str] = None
+
+    status: Optional[str] = None
+    success_flag: Optional[bool] = None
+    progress_percent: Optional[int] = None
+    priority: Optional[str] = None
+
+    category: Optional[str] = None
+    tag: Optional[str] = None
+
+    start_date: Optional[datetime] = None
+    due_date: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+
+    estimated_minutes: Optional[int] = None
+    actual_minutes: Optional[int] = None
+
+    visibility: Optional[str] = None
+    source_type: Optional[str] = None
+    ai_suggested: Optional[bool] = None
+
+    sort_order: Optional[int] = None
+    archived: Optional[bool] = None
+    deleted: Optional[bool] = None
+
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class TodoListResponse(BaseModel):
+    success: bool
+    todos: list[TodoResponse]
+
+
+
+
+class TodoUpdateRequest(BaseModel):
+    assignee_user_id: Optional[int] = None
+    title: Optional[str] = None
+    description: Optional[str] = None
+
+    status: Optional[Literal["TODO", "IN_PROGRESS", "BLOCKED", "REVIEW", "DONE", "CANCELLED"]] = None
+    success_flag: Optional[bool] = None
+    progress_percent: Optional[int] = None
+
+    priority: Optional[Literal["LOW", "MEDIUM", "HIGH", "URGENT"]] = None
+
+    category: Optional[str] = None
+    tag: Optional[str] = None
+
+    start_date: Optional[datetime] = None
+    due_date: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+
+    estimated_minutes: Optional[int] = None
+    actual_minutes: Optional[int] = None
+
+    visibility: Optional[Literal["PRIVATE", "ROOM", "PUBLIC"]] = None
+    source_type: Optional[Literal["MANUAL", "AI", "SYSTEM"]] = None
+    ai_suggested: Optional[bool] = None
+
+    sort_order: Optional[int] = None
+    archived: Optional[bool] = None
+    deleted: Optional[bool] = None
+
+
+class TodoStatusUpdateRequest(BaseModel):
+    status: Literal["TODO", "IN_PROGRESS", "BLOCKED", "REVIEW", "DONE", "CANCELLED"]
+    progress_percent: Optional[int] = None
+    success_flag: Optional[bool] = None
+
+
+class SimpleSuccessResponse(BaseModel):
+    success: bool
+    message: str
+
+
+
+
+TodoStatus = Literal["TODO", "IN_PROGRESS", "BLOCKED", "REVIEW", "DONE", "CANCELLED"]
+TodoPriority = Literal["LOW", "MEDIUM", "HIGH", "URGENT"]
+TodoVisibility = Literal["PRIVATE", "ROOM", "PUBLIC"]
+TodoSourceType = Literal["MANUAL", "AI", "SYSTEM"]
+
+
+class TodoCreateRequest(BaseModel):
+    room_id: int
+    assignee_user_id: Optional[int] = None
+
+    title: str = Field(..., max_length=200)
+    description: Optional[str] = None
+
+    status: TodoStatus = "TODO"
+    success_flag: Optional[bool] = None
+    progress_percent: Optional[int] = Field(default=None, ge=0, le=100)
+
+    priority: TodoPriority = "MEDIUM"
+    category: Optional[str] = Field(default=None, max_length=50)
+    tag: Optional[str] = Field(default=None, max_length=100)
+
+    start_date: Optional[datetime] = None
+    due_date: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+
+    estimated_minutes: Optional[int] = Field(default=None, ge=0)
+    actual_minutes: Optional[int] = Field(default=None, ge=0)
+
+    is_recurring: Optional[bool] = None
+    recurrence_rule: Optional[str] = Field(default=None, max_length=255)
+
+    visibility: TodoVisibility = "ROOM"
+    source_type: TodoSourceType = "MANUAL"
+    ai_suggested: Optional[bool] = None
+
+    sort_order: Optional[int] = None
+    archived: Optional[bool] = False
+    deleted: Optional[bool] = False
+
+
+class TodoUpdateRequest(BaseModel):
+    assignee_user_id: Optional[int] = None
+
+    title: Optional[str] = Field(default=None, max_length=200)
+    description: Optional[str] = None
+
+    status: Optional[TodoStatus] = None
+    success_flag: Optional[bool] = None
+    progress_percent: Optional[int] = Field(default=None, ge=0, le=100)
+
+    priority: Optional[TodoPriority] = None
+    category: Optional[str] = Field(default=None, max_length=50)
+    tag: Optional[str] = Field(default=None, max_length=100)
+
+    start_date: Optional[datetime] = None
+    due_date: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+
+    estimated_minutes: Optional[int] = Field(default=None, ge=0)
+    actual_minutes: Optional[int] = Field(default=None, ge=0)
+
+    is_recurring: Optional[bool] = None
+    recurrence_rule: Optional[str] = Field(default=None, max_length=255)
+
+    visibility: Optional[TodoVisibility] = None
+    source_type: Optional[TodoSourceType] = None
+    ai_suggested: Optional[bool] = None
+
+    sort_order: Optional[int] = None
+    archived: Optional[bool] = None
+    deleted: Optional[bool] = None
+
+
+class TodoStatusUpdateRequest(BaseModel):
+    status: TodoStatus
+    progress_percent: Optional[int] = Field(default=None, ge=0, le=100)
+    success_flag: Optional[bool] = None
+
+
+class TodoReorderItem(BaseModel):
+    todo_id: int
+    sort_order: int
+
+
+class TodoReorderRequest(BaseModel):
+    items: List[TodoReorderItem]
+
+
+class TodoResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    room_id: int
+    creator_user_id: int
+    assignee_user_id: Optional[int]
+
+    title: str
+    description: Optional[str]
+
+    status: TodoStatus
+    success_flag: Optional[bool]
+    progress_percent: Optional[int]
+
+    priority: TodoPriority
+    category: Optional[str]
+    tag: Optional[str]
+
+    start_date: Optional[datetime]
+    due_date: Optional[datetime]
+    completed_at: Optional[datetime]
+
+    estimated_minutes: Optional[int]
+    actual_minutes: Optional[int]
+
+    is_recurring: Optional[bool]
+    recurrence_rule: Optional[str]
+
+    visibility: TodoVisibility
+    source_type: TodoSourceType
+    ai_suggested: Optional[bool]
+
+    sort_order: Optional[int]
+    archived: Optional[bool]
+    deleted: Optional[bool]
+
+    created_at: datetime
+    updated_at: datetime
+
+
+class TodoListResponse(BaseModel):
+    success: bool
+    todos: List[TodoResponse]
+
+
+class TodoSingleResponse(BaseModel):
+    success: bool
+    todo: TodoResponse
+
+
+class MessageResponse(BaseModel):
+    success: bool
+    message: str
