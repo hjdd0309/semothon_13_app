@@ -22,6 +22,33 @@ class Question {
 }
 
 final Map<String, List<Question>> subjectQuestions = {
+  '세계와 시민': [
+    Question(
+      title: '우리 조가 다뤄봤으면 하는 사회문제 분야는 무엇인가요? (1~2개 선택)',
+      type: QuestionType.multipleChoiceWithOther,
+      options: ['환경/생태', '인권/복지', '생활/안전', '교육/문화', '기술/과학'],
+      maxSelect: 2,
+    ),
+    Question(
+      title: '최근 일상생활에서 불편을 느끼거나 문제라고 생각했던 경험이 있다면 무엇인가요?',
+      type: QuestionType.text,
+    ),
+    Question(
+      title: '해결하는 사회문제의 범위는 어디까지인가요?',
+      type: QuestionType.singleChoice,
+      options: ['캠퍼스', '지역사회', '대한민국/국가 및 글로벌'],
+    ),
+    Question(
+      title: '이번 활동에서 대변하거나 돕고싶은 구체적 대상은 누구인가요?',
+      type: QuestionType.text,
+    ),
+    Question(
+      title: '도전해보고 싶은 해결 방식은 무엇인가요? (1~2개 선택)',
+      type: QuestionType.multipleChoiceWithOther,
+      options: ['숏폼 영상 제작', '오프라인 캠페인', '카드뉴스 제작', 'SNS 운영', '제도 제안'],
+      maxSelect: 2,
+    ),
+  ],
   '디자인적 사고': [
     Question(
       title: '최근 흥미로웠던 개발 주제가 있으신가요? (중복 가능)',
@@ -48,7 +75,7 @@ final Map<String, List<Question>> subjectQuestions = {
       options: ['아이디어 기획 중심', '간단한 프로토타입', '핵심 기능 구현', '대부분 기능 구현', '실제 배포 가능 수준'],
     ),
   ],
-  '세계와 시민': [
+  '데이터분석캡스톤디자인': [
     Question(
       title: '우리 조가 다뤄봤으면 하는 사회문제 분야는 무엇인가요? (1~2개 선택)',
       type: QuestionType.multipleChoiceWithOther,
@@ -130,7 +157,7 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
 
   bool hasStarted = false;
   int currentQuestionIndex = 0;
-  String selectedSubject = '디자인적 사고';
+  String selectedSubject = '세계와 시민';
   Map<int, dynamic> answers = {};
 
   // 텍스트 입력용 컨트롤러 (질문 이동 시 값 유지)
@@ -266,25 +293,25 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
 
     List<Map<String, String>> dummyTopics = [
       {
-        'topic_name': '캠퍼스 내 친환경 실천 리워드 앱',
+        'topic_name': '지역 주민 참여형 도시 안전 모니터링 플랫폼',
         'reason':
-        '팀원 다수가 환경 문제와 앱 프로그래밍에 관심을 보였으며, 현실적으로 구현 가능한 아이디어입니다.',
+        '문제 상황: 특정 지점에서 야간 범죄와 교통사고 발생이 반복되어 지역 주민 불안감이 높습니다.\n조사 활동: CCTV 빈도, 신고 데이터, 현장 인터뷰를 통해 위험구역을 시각화합니다.\n해결 활동: 모바일 앱으로 위험 지역 알림 제공, 주민 순찰 네트워크 운영 계획을 제시할 수 있습니다.',
         'expected_effect':
-        '학생들의 자발적인 참여를 유도하여 캠퍼스 내 쓰레기를 줄이고, 실전 앱 개발 경험을 쌓을 수 있습니다.',
+        '활동 추천: 안전 보행 루트 맵 제작 + 주민 공동체 워크숍을 진행하여 문제 인식과 자율 해결 역량을 강화합니다.',
       },
       {
-        'topic_name': '대학생 중고 전공서적 거래 플랫폼',
+        'topic_name': '다문화 가정 자녀 교육 지원 커뮤니티 서비스',
         'reason':
-        '팀원들이 생활 편의 서비스와 웹/앱 개발에 흥미를 가지고 있어, 대학생 타겟의 유용한 서비스 기획이 가능합니다.',
+        '문제 상황: 다문화 학생들이 언어 장벽과 학습 자료 부족으로 학습 격차를 겪고 있습니다.\n조사 활동: 가정 방문, 교사 인터뷰, 교육 성취도 데이터를 수집하여 필요 영역을 도출합니다.\n해결 활동: 온라인 멘토링 프로그램과 문화 콘텐츠 공유 플랫폼을 설계합니다.',
         'expected_effect':
-        '학생들의 전공서적 구매 부담을 줄여주며, 실제 사용자를 모으기 좋은 프로토타입 결과물이 될 수 있습니다.',
+        '활동 추천: 교육 자료 번역·맞춤형 학습 경로 제공 + 지역 사회 언어 교류 행사를 운영해 유대감을 형성합니다.',
       },
       {
-        'topic_name': '시각장애인을 위한 스마트 보행 보조기구 기획',
+        'topic_name': '청년 사회참여를 위한 온라인 정책 제안 캠페인',
         'reason':
-        '인권/복지 문제 해결에 강한 열의를 보인 답변이 많아, 사회적 의미가 깊은 주제입니다.',
+        '문제 상황: 청년들이 정책 참여 채널을 몰라 의견이 수렴되지 않고 있습니다.\n조사 활동: 청년 설문, SNS 분석, 지방자치 데이터로 정책 관심사를 파악합니다.\n해결 활동: 쉽게 참여할 수 있는 웹 플랫폼과 정책 제안 카드뉴스 제작을 기획합니다.',
         'expected_effect':
-        '단순한 앱을 넘어 하드웨어와 결합된 아이디어로 발전할 수 있어 긍정적인 평가를 받을 수 있습니다.',
+        '활동 추천: 참여형 정책 토론 이벤트 + 온라인 투표 시스템으로 의견 수렴을 체계화합니다.',
       },
     ];
 
@@ -1087,7 +1114,7 @@ class RecommendationResultScreen extends StatelessWidget {
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16)),
                     ),
-                    child: const Text('대시보드 이동',
+                    child: const Text('돌아가기',
                         style: TextStyle(
                             fontSize: 15, fontWeight: FontWeight.w800)),
                   ),
