@@ -493,7 +493,6 @@ def recommend_topics(request: schemas.TopicRecommendRequest, db: Session = Depen
     return schemas.TopicRecommendResponse(success=True, topics=topics)
 
 
-
 # ─── Logger ───
 logger = logging.getLogger(__name__)
 
@@ -583,6 +582,12 @@ def distribute_tasks(
     if not client:
         raise HTTPException(status_code=503, detail="AI 서비스를 사용할 수 없습니다.")
 
+    room = db.query(models.Room).filter(models.Room.id == request.room_id).first()
+    if not room:
+        raise HTTPException(status_code=404, detail="방을 찾을 수 없습니다.")
+    if not room.topic:
+        raise HTTPException(status_code=400, detail="방에 설정된 주제가 없습니다.")
+
     # 1) 방 멤버 조회
     members: List[models.User] = (
         db.query(models.User)
@@ -616,7 +621,6 @@ def distribute_tasks(
         else "자율"
     )
 
-
     system_prompt = (
     "너는 효율성을 중시하는 '냉철하고 직관적인 IT 프로젝트 매니저'다. "
     "팀원들에게 업무를 분배할 때, 감성적인 수식어는 배제하고 전문적인 비즈니스 문체(격식체 또는 정중한 평어)를 사용해라. "
@@ -626,7 +630,7 @@ def distribute_tasks(
 
     user_prompt = f"""
     # [프로젝트 개요]
-    - 주제: {request.final_topic}
+    - 주제: {room.topic}
     - 마감: {deadline_str}
 
     # [팀원 명단]
@@ -664,6 +668,7 @@ def distribute_tasks(
     - 마감일({deadline_str})을 기준으로 우선순위를 판단할 것.
     - priority, reason, description 항목에서 이모지는 제거할것.
     """
+
     # 3) AI API 호출
     try:
         api_kwargs = dict(
@@ -746,10 +751,51 @@ def distribute_tasks(
             detail=f"일부 팀원에게 태스크가 배정되지 않았습니다. (미배정 ID: {sorted(unassigned)})",
         )
 
+    # 6) DB 저장
+    try:
+        task_objects: List[models.Task] = [
+            models.Task(
+                room_id=request.room_id,
+                assigned_user_id=t["assigned_user_id"],
+                title=t["title"],
+                description=t["description"],
+                priority=t["priority"],
+                due_date=to_utc(request.deadline),
+                created_by="AI",
+                status="TODO",
+                progress_percent=0,
+            )
+            for t in validated_tasks
+        ]
 
-                
+        db.add_all(task_objects)
         db.flush()
         db.commit()
+
+    except IntegrityError as e:
+        db.rollback()
+        logger.error("DB 무결성 오류: %s", e, exc_info=True)
+        raise HTTPException(
+            status_code=400, detail="데이터 저장 중 무결성 오류가 발생했습니다."
+        )
+    except Exception as e:
+        db.rollback()
+        logger.error("DB 저장 실패: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="데이터 저장에 실패했습니다.")
+
+    # 7) 응답 반환
+    return schemas.TaskDistributeResponse(
+        success=True,
+        tasks=[
+            schemas.GeneratedTask(
+                title=obj.title,
+                description=obj.description or "",
+                assigned_user_id=obj.assigned_user_id,
+                reason=vt["reason"],
+            )
+            for obj, vt in zip(task_objects, validated_tasks)
+        ],
+    )
 
 
 def build_system_chat_prompt() -> str:
