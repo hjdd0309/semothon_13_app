@@ -737,7 +737,7 @@ def distribute_tasks(
                 {"role": "user", "content": user_prompt},
             ],
             temperature=0.3,
-            max_completion_tokens=250, 
+            max_completion_tokens=1000, 
         )
         try:
             api_kwargs["response_format"] = {"type": "json_object"}
