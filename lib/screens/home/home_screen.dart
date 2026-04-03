@@ -694,7 +694,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) return;
 
     final joinedProject = _findJoinedProjectFromResponse(data);
-    
+
     if (joinedProject == null) {
       _showSnackBar('참여한 프로젝트를 찾지 못했어요.');
       return;
@@ -774,8 +774,13 @@ class _HomeScreenState extends State<HomeScreen> {
       context,
       MaterialPageRoute(
         settings: const RouteSettings(name: 'ProjectDetailScreen'),
-        builder: (_) =>
-            ProjectDetailScreen(project: project, service: _projectService),
+        builder: (_) => ProjectDetailScreen(
+          project: project,
+          service: _projectService,
+          myUserId: widget.userId?.toString(),
+          myUsername: widget.userName,
+          myDisplayName: displayName,
+        ),
       ),
     );
 

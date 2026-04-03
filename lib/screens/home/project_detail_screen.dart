@@ -18,7 +18,7 @@ import '../services/project_service.dart';
 import 'icebreaking_stage_screen.dart';
 import 'topic_selection_stage_screen.dart';
 import 'role_assignment_stage_screen.dart';
-import 'collaboration_stage_screen.dart';
+import 'todo_overview_screen.dart';
 
 String formatDate(DateTime date) {
   return '${date.month}월 ${date.day}일';
@@ -35,12 +35,18 @@ class ProjectDetailScreen extends StatefulWidget {
   final ProjectDetailModel project;
   final ProjectService service;
 
+  final String? myUserId;
+  final String? myUsername;
+  final String? myDisplayName;
+
   const ProjectDetailScreen({
     super.key,
     required this.project,
     required this.service,
+    this.myUserId,
+    this.myUsername,
+    this.myDisplayName,
   });
-
   @override
   State<ProjectDetailScreen> createState() => _ProjectDetailScreenState();
 }
@@ -112,7 +118,14 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
         );
         break;
       case 3:
-        screen = const CollaborationStageScreen();
+        screen = TeamTodoOverviewScreen(
+          project: project,
+          service: widget.service,
+          todoItems: _buildTodoDisplayItems(),
+          myUserId: widget.myUserId,
+          myUsername: widget.myUsername,
+          myDisplayName: widget.myDisplayName,
+        );
         break;
       default:
         return;
@@ -520,6 +533,64 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollChatToBottom();
     });
+  }
+
+  void _openTeamTodoOverview() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TeamTodoOverviewScreen(
+          project: project,
+          service: widget.service,
+          todoItems: _buildTodoDisplayItems(),
+        ),
+      ),
+    );
+  }
+
+  List<TodoDisplayItem> _buildTodoDisplayItems() {
+    final List<TodoDisplayItem> items = [];
+
+    for (final role in project.roles) {
+      final assigneeName = '팀원';
+
+      for (final task in role.tasks) {
+        final dueDateText = '${task.dueDate.year.toString().padLeft(4, '0')}-'
+            '${task.dueDate.month.toString().padLeft(2, '0')}-'
+            '${task.dueDate.day.toString().padLeft(2, '0')}';
+
+        String status;
+        if (task.done) {
+          status = '완료';
+        } else {
+          final today = DateTime.now();
+          final dueOnly = DateTime(
+            task.dueDate.year,
+            task.dueDate.month,
+            task.dueDate.day,
+          );
+          final todayOnly = DateTime(today.year, today.month, today.day);
+
+          if (dueOnly.isBefore(todayOnly)) {
+            status = '대기';
+          } else {
+            status = '진행중';
+          }
+        }
+
+        items.add(
+          TodoDisplayItem(
+            title: task.title,
+            assignee: assigneeName,
+            dueDateText: dueDateText,
+            status: status,
+            isDone: task.done,
+          ),
+        );
+      }
+    }
+
+    return items;
   }
 
   Future<void> sendChatMessage() async {
