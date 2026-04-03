@@ -449,24 +449,42 @@ def recommend_topics(request: schemas.TopicRecommendRequest, db: Session = Depen
                 {"role": "user", "content": user_prompt},
             ],
         )
-        raw_text = response.choices[0].message.content.strip()
+        raw_text = response.choices[0].message.content
+        if not raw_text:
+            raise ValueError("AI 응답 내용이 비어있습니다.")
+        raw_text = raw_text.strip()
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"AI API 호출 오류: {str(e)}")
 
     # 8. JSON 파싱
     try:
-        topics_data = json.loads(raw_text)
+        topics_data = extract_json_safe(raw_text)
+        
+        # 모델이 배열이 아닌 {"topics": [...]} 형태로 응답할 경우를 대비한 방어 로직
+        if isinstance(topics_data, dict):
+            if "topics" in topics_data and isinstance(topics_data["topics"], list):
+                topics_data = topics_data["topics"]
+            else:
+                for val in topics_data.values():
+                    if isinstance(val, list):
+                        topics_data = val
+                        break
+                        
+        if not isinstance(topics_data, list):
+            raise ValueError("예상된 구조(Array)가 아닙니다.")
+
         topics = [
             schemas.RecommendedTopic(
-                topic_name=t["topic_name"],
-                expected_effect=t["expected_effect"],
+                topic_name=t.get("topic_name", "이름 없음"),
+                reason=t.get("reason", "이유 누락"),
+                expected_effect=t.get("expected_effect", "기대효과 누락"),
             )
             for t in topics_data
         ]
-    except (json.JSONDecodeError, KeyError):
+    except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"AI 응답 파싱 실패. 원본 응답: {raw_text[:300]}"
+            detail=f"AI 응답 파싱 실패({str(e)}). 원본 응답: {raw_text[:300]}"
         )
 
     # 9. DB 저장 (방식 A: 추천된 3가지 주제 리스트를 모두 저장)
