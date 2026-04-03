@@ -171,42 +171,172 @@ SUBJECT_QUESTIONS: dict = {
 def build_summary_text_from_context_json(context_json: dict) -> str:
     return json.dumps(context_json, ensure_ascii=False, indent=2)
 
+def _compact_text(text: str, max_chars: int = 1600) -> str:
+    items: list[str] = []
+    seen: set[str] = set()
+    size = 0
+
+    for raw in text.splitlines():
+        line = " ".join(raw.split())
+        if not line:
+            continue
+
+        key = line.lower()
+        if key in seen:
+            continue
+
+        seen.add(key)
+        items.append(line)
+        size += len(line) + 1
+
+        if size >= max_chars:
+            break
+
+    return "\n".join(items)[:max_chars]
+
 
 def build_system_ice_breaking_prompt() -> str:
     return """
 너는 경희대 팀 프로젝트를 돕는 친근한 AI 코치다.
-상냥하게 진행자처럼 말하면 된다.
-반드시 주어진 JSON 스키마에 맞는 JSON만 반환해야 한다.
+상냥한 진행자처럼 짧고 자연스럽게 말한다.
+입력 정보만 바탕으로 경향 수준에서 해석하고 과도한 단정은 하지 않는다.
+반드시 JSON 하나만 반환해야 한다.
 JSON 바깥의 설명, 코드블록, 마크다운은 절대 출력하지 말아라.
 """.strip()
 
 
 def build_ice_breaking_prompt(summary_text: str, question: str) -> str:
-    return f"""
-아래는 팀원 정보와 팀 상황에 대한 요약이다.
+    summary_text = _compact_text(summary_text, max_chars=1600)
+    question = " ".join(question.split())[:300]
 
-[팀 정보]
+    return f"""
+[team]
 {summary_text}
 
-[질문]
+[question]
 {question}
 
-[목표]
+[goal]
 - 팀원 각자의 성향을 부드럽게 해석
-- 팀 전체 분위기를 요약
+- 팀 전체 분위기를 짧게 요약
 - 어색함을 줄일 대화 포인트 제안
 
-[해석 원칙]
-- 입력은 제한적 정보이므로 과도하게 단정하지 말 것
-- 성격을 진단하지 말고 경향 수준으로 설명할 것
+[output]
+반드시 JSON 하나만 반환:
+{{
+  "team_summary": "string",
+  "questions": ["string"],
+  "character": [
+    {{
+      "member_name": "string",
+      "traits": ["string"],
+      "interaction_points": ["string"]
+    }}
+  ]
+}}
 
-[출력 규칙]
-- 반드시 JSON 하나만 반환
+[rules]
 - 모든 key는 영문으로 유지
 - questions는 문자열 리스트로 반환
 - character는 "member_name", "traits", "interaction_points"를 가진 객체들의 리스트로 반환
+- 성격 진단 금지, 경향 수준으로만 설명
 - 실제 팀플에 바로 활용할 수 있게 구체적으로 작성
+- team_summary는 2문장 이하
+- questions는 2~3개만 생성
+- 각 member의 traits는 1~2개만 작성
+- 각 member의 interaction_points는 1~2개만 작성
+- 길게 쓰지 말고 핵심만 작성
 """.strip()
+
+
+def _extract_json_text(content: str) -> str:
+    content = content.strip()
+
+    if content.startswith("{") and content.endswith("}"):
+        return content
+
+    start = content.find("{")
+    end = content.rfind("}")
+    if start == -1 or end == -1 or end <= start:
+        raise ValueError("Model did not return valid JSON")
+
+    return content[start:end + 1]
+
+
+def _validate_ice_breaking_result(data: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        raise ValueError("Result must be a JSON object")
+
+    team_summary = data.get("team_summary", "")
+    questions = data.get("questions", [])
+    characters = data.get("character", [])
+
+    if not isinstance(team_summary, str):
+        raise ValueError("team_summary must be string")
+
+    if not isinstance(questions, list) or not all(isinstance(x, str) for x in questions):
+        raise ValueError("questions must be list[str]")
+
+    if not isinstance(characters, list):
+        raise ValueError("character must be list[object]")
+
+    clean_characters: list[dict[str, Any]] = []
+
+    for item in characters:
+        if not isinstance(item, dict):
+            raise ValueError("character item must be object")
+
+        member_name = item.get("member_name", "")
+        traits = item.get("traits", [])
+        interaction_points = item.get("interaction_points", [])
+
+        if not isinstance(member_name, str):
+            raise ValueError("member_name must be string")
+
+        if not isinstance(traits, list) or not all(isinstance(x, str) for x in traits):
+            raise ValueError("traits must be list[str]")
+
+        if not isinstance(interaction_points, list) or not all(isinstance(x, str) for x in interaction_points):
+            raise ValueError("interaction_points must be list[str]")
+
+        clean_characters.append(
+            {
+                "member_name": member_name.strip(),
+                "traits": [x.strip() for x in traits if x.strip()][:2],
+                "interaction_points": [x.strip() for x in interaction_points if x.strip()][:2],
+            }
+        )
+
+    return {
+        "team_summary": team_summary.strip(),
+        "questions": [x.strip() for x in questions if x.strip()][:3],
+        "character": clean_characters,
+    }
+
+
+def request_ice_breaking(
+    client: OpenAI,
+    summary_text: str,
+    question: str,
+    model: str = "gpt-4.1-mini",
+) -> dict[str, Any]:
+    response = client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": build_system_ice_breaking_prompt()},
+            {"role": "user", "content": build_ice_breaking_prompt(summary_text, question)},
+        ],
+        temperature=0.2,
+        top_p=1,
+        max_completion_tokens=280,
+        response_format={"type": "json_object"},
+    )
+
+    content = response.choices[0].message.content or "{}"
+    json_text = _extract_json_text(content)
+    data = json.loads(json_text)
+
+    return _validate_ice_breaking_result(data)
 
 def get_ice_breaking_json_schema():
     return {
