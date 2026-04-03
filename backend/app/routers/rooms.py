@@ -19,7 +19,7 @@ from app.schemas import (
     JoinRoomByInviteCodeRequest,
     JoinRoomByInviteCodeResponse,
     ErrorResponse,
-    RoomUpdateRequest, RoomResponse
+    RoomUpdateRequest,RoomResponse
 )
 
 router = APIRouter(prefix="/rooms", tags=["rooms"])
@@ -162,7 +162,7 @@ def create_room(
         max_members=request.max_members,
         status="WAITING",
         current_stage="WAITING",
-        subject=request.subject.strip() if request.subject else "세계와 시민"
+        subject=request.title.strip() if request.title else "세계와 시민"
     )
     db.add(new_room)
     db.flush()
@@ -190,7 +190,7 @@ def create_room(
 def get_room_detail(
     room_id: int,
     db: Session = Depends(get_db),
-    # current_user: User = Depends(get_current_user),
+    # current_user: User = Depends(get_current_user),git 
 ):
     room = _get_room_or_404(db, room_id)
     # _check_room_member(db, room_id, current_user.id)
@@ -510,45 +510,5 @@ def join_room_by_invite_code(
         title=room.title,
         current_stage=room.current_stage
     )
-
-@router.patch(
-    "/{room_id}",
-    response_model=RoomResponse,
-    summary="룸 수정",
-    description="특정 룸 정보를 수정합니다.",
-)
-def update_room(
-    room_id: int,
-    request: RoomUpdateRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    room = db.query(Room).filter(Room.id == room_id).first()
-    if not room:
-        raise HTTPException(status_code=404, detail="Room not found")
-
-    # invite_code 중복 체크
-    if request.invite_code is not None:
-        existing_room = (
-            db.query(Room)
-            .filter(Room.invite_code == request.invite_code, Room.id != room_id)
-            .first()
-        )
-        if existing_room:
-            raise HTTPException(status_code=400, detail="Invite code already in use")
-
-    # None 값은 제외하고 업데이트
-    update_data = request.model_dump(exclude_unset=True, exclude_none=True)
-
-    for field, value in update_data.items():
-        setattr(room, field, value)
-
-    # status는 항상 WAITING
-    room.status = "WAITING"
-
-    db.commit()
-    db.refresh(room)
-
-    return room
 
 
