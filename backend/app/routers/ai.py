@@ -654,15 +654,6 @@ VALID_PRIORITIES = {"LOW", "MEDIUM", "HIGH"}
 DEFAULT_PRIORITY = "MEDIUM"
 
 
-if api_key:
-    client = OpenAI(
-        api_key=api_key,
-        base_url="https://factchat-cloud.mindlogic.ai/v1/gateway",
-    )
-
-MODEL_NAME = "claude-sonnet-4-6"
-
-
 # ─── Helper Functions ───
 
 def safe_profile(user: models.User, field: str) -> str:
@@ -735,10 +726,22 @@ def distribute_tasks(
         raise HTTPException(status_code=503, detail="AI 서비스를 사용할 수 없습니다.")
 
     # 0) 방 조회 및 topic 확인
+    logger.info(f"🚀 [DISTRIBUTE] Request received - roomId: {request.room_id}, topic: '{request.final_topic}'")
+    
     room = db.query(models.Room).filter(models.Room.id == request.room_id).first()
     if not room:
         raise HTTPException(status_code=404, detail="방을 찾을 수 없습니다.")
-    if not room.topic:
+    # 요청으로 들어온 주제가 있으면 DB 업데이트 (공백 제거 후 유효성 검사)
+    final_topic_stripped = (request.final_topic or "").strip()
+    if final_topic_stripped and (not room.topic or room.topic != final_topic_stripped):
+        logger.info(f"✅ [DISTRIBUTE] Updating room topic to: {final_topic_stripped}")
+        room.topic = final_topic_stripped
+        db.add(room)
+        db.commit()
+        db.refresh(room)
+
+    if not (room.topic or "").strip():
+        logger.error(f"❌ [DISTRIBUTE] Failed - No topic set for room {request.room_id}")
         raise HTTPException(status_code=400, detail="방에 설정된 주제가 없습니다.")
 
     # 1) 방 멤버 조회
