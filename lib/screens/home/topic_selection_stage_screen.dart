@@ -3,6 +3,7 @@ import 'role_assignment_stage_screen.dart';
 import 'project_detail_screen.dart';
 import '../models/project_detail_model.dart';
 import '../services/project_service.dart';
+import '../services/ai_service.dart';
 
 // --- 1. 데이터 모델 및 모든 과목 질문 데이터 ---
 enum QuestionType { singleChoice, multipleChoice, text, multipleChoiceWithOther }
@@ -209,7 +210,7 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
         currentQuestionIndex++;
       });
     } else {
-      _submitSurveyFake();
+      _submitSurvey();
     }
   }
 
@@ -229,7 +230,7 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
     return true;
   }
 
-  void _submitSurveyFake() async {
+  void _submitSurvey() async {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -246,7 +247,8 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
               CircularProgressIndicator(color: kWine),
               SizedBox(height: 20),
               Text(
-                'AI가 주제를 분석 중이에요...',
+                'AI가 팀의 성향과 답변을\n열심히 분석하여 주제를 찾고 있어요...',
+                textAlign: TextAlign.center,
                 style: TextStyle(
                   color: kText,
                   fontSize: 15,
@@ -259,47 +261,55 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
       ),
     );
 
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      // 답변 데이터 가공
+      final myAnswers = answers.entries.map((e) {
+        if (e.value is List) {
+          return (e.value as List).join(',');
+        }
+        return e.value.toString();
+      }).toList();
 
-    if (!mounted) return;
-    Navigator.pop(context);
+      final result = await AIService.submitTopicAnswersAndGetRecommendation(
+        1,
+        selectedSubject,
+        [
+          {"user_id": 1, "answers": ["웹/앱 서비스", "Python, React", "사회 문제 해결을 위한 앱 만들기"]},
+          {"user_id": 2, "answers": ["간단한 프로토타입", "디자인 위주 진행 희망"]},
+          {"user_id": 3, "answers": myAnswers}
+        ],
+      );
 
-    List<Map<String, String>> dummyTopics = [
-      {
-        'topic_name': '캠퍼스 내 친환경 실천 리워드 앱',
-        'reason':
-        '팀원 다수가 환경 문제와 앱 프로그래밍에 관심을 보였으며, 현실적으로 구현 가능한 아이디어입니다.',
-        'expected_effect':
-        '학생들의 자발적인 참여를 유도하여 캠퍼스 내 쓰레기를 줄이고, 실전 앱 개발 경험을 쌓을 수 있습니다.',
-      },
-      {
-        'topic_name': '대학생 중고 전공서적 거래 플랫폼',
-        'reason':
-        '팀원들이 생활 편의 서비스와 웹/앱 개발에 흥미를 가지고 있어, 대학생 타겟의 유용한 서비스 기획이 가능합니다.',
-        'expected_effect':
-        '학생들의 전공서적 구매 부담을 줄여주며, 실제 사용자를 모으기 좋은 프로토타입 결과물이 될 수 있습니다.',
-      },
-      {
-        'topic_name': '시각장애인을 위한 스마트 보행 보조기구 기획',
-        'reason':
-        '인권/복지 문제 해결에 강한 열의를 보인 답변이 많아, 사회적 의미가 깊은 주제입니다.',
-        'expected_effect':
-        '단순한 앱을 넘어 하드웨어와 결합된 아이디어로 발전할 수 있어 긍정적인 평가를 받을 수 있습니다.',
-      },
-    ];
+      if (!mounted) return;
+      Navigator.pop(context); // close dialog
 
-    if (!mounted) return;
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => RecommendationResultScreen(
-          topics: dummyTopics,
-          project: widget.project,
-          service: widget.service,
+      final List<dynamic> rawTopics = result['topics'] ?? [];
+      final List<Map<String, String>> realTopics = rawTopics.map((t) => {
+        'topic_name': t['topic_name']?.toString() ?? '',
+        'reason': t['reason']?.toString() ?? '',
+        'expected_effect': t['expected_effect']?.toString() ?? ''
+      }).toList();
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => RecommendationResultScreen(
+            topics: realTopics,
+            project: widget.project,
+            service: widget.service,
+          ),
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // close dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('주제 추천 중 에러가 발생했습니다: $e')),
+      );
+    }
   }
+
+
 
   // ──────────────────── 시작 화면 ────────────────────
   Widget _buildStartScreen() {
