@@ -453,7 +453,6 @@ def recommend_topics(request: schemas.TopicRecommendRequest, db: Session = Depen
         topics = [
             schemas.RecommendedTopic(
                 topic_name=t["topic_name"],
-                reason=t["reason"],
                 expected_effect=t["expected_effect"],
             )
             for t in topics_data
@@ -650,23 +649,29 @@ def distribute_tasks(
     "tasks": [
         {{
         "title": "업무 명칭 (명사형으로 깔끔하게)",
-        "description": "업무 범위와 최종 산출물을 기술적으로 설명",
+        "description": "각 태스크로 업무 명칭만 3개 이상 설명할것",
         "assigned_user_id": 숫자,
         "priority": "LOW | MEDIUM | HIGH",
-        "reason": "팀원의 정보(성격, 전공 등)를 기반으로 한 직관적이고 논리적인 배정 근거"
         }}
     ]
     }}
 
     # [수행 규칙]
+    - **1인 프로젝트라 할지라도, 반드시 업무를 기술적으로 세분화하여 최소 3개 이상의 태스크로 나누어 배분할 것.**
+    - 각 태스크는 업무 명칭은 명사형으로 간결하고 깔끔하게 작성할 것.
+        예시(1. 프로젝트 총괄 및 팀장
+        2. PPT 및 발표 자료 제작
+        3. 데이터 자료조사 및 시장 분석
+        4. 최종 기획서 마무리 및 요구사항 정의
+        5. 관련 논문/자료 리서치 및 요약)
     - **JSON의 'tasks' 리스트 중 첫 번째 요소(index 0)는 반드시 '팀장' 업무여야 함.**
+    - description에는 각 태스크의 업무 명칭만 간결하게 3개 이상 작성할것. (예: '프로젝트 총괄 및 팀장' → '프로젝트 관리 및 팀 리딩')
     - 팀장은 다른 실무 업무(1~6번)를 겸직할 수 있으나, '팀장' 업무 자체는 독립된 객체로 먼저 정의할 것.
     - '0. 팀장' 업무는 프로젝트 성격과 무관하게 반드시 포함하되, 그 외 주제와 관련 없는 업무 카테고리는 과감히 제외할 것.
-    - 'reason' 필드에서 '심장부', '따뜻한', '함께 고민해봐요' 같은 감성적 표현은 절대 금지.
     - 구체적인 근거를 제시할 것 (예: '기술 스택 정보가 없으나, 전공 역량을 고려해 ~를 배정함').
     - 모든 팀원에게 최소 1개 이상의 업무를 반드시 배분할 것.
     - 마감일({deadline_str})을 기준으로 우선순위를 판단할 것.
-    - priority, reason, description 항목에서 이모지는 제거할것.
+    - priority, description 항목에서 이모지는 제거할것.
     """
 
     # 3) AI API 호출
@@ -729,7 +734,6 @@ def distribute_tasks(
                 "description": (t.get("description") or "").strip(),
                 "assigned_user_id": assigned_id,
                 "priority": priority,
-                "reason": (t.get("reason") or "").strip(),
             }
         )
 
@@ -749,7 +753,7 @@ def distribute_tasks(
                 creator_user_id=room.host_user_id,  # ← current_user 대신 방장 ID 사용
                 assignee_user_id=vt["assigned_user_id"],
                 title=vt["title"],
-                description=f"{vt['description']}\n\n[배정 근거]\n{vt['reason']}",
+                description=vt["description"],
                 priority=vt["priority"],
                 status="TODO",
                 source_type="AI",
