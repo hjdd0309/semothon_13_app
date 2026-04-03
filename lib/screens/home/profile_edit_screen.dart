@@ -87,7 +87,6 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     }
 
     try {
-      // 프로필 불러오기
       final profileRes = await http.get(
         Uri.parse('$baseUrl/profile/me'),
         headers: {'Authorization': 'Bearer ${widget.token}'},
@@ -101,9 +100,9 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
           selectedMBTI = data['mbti'];
           personalityController.text = data['personality_summary'] ?? '';
 
-          // preferred_roles 파싱
-          if (data['preferred_roles'] != null && data['preferred_roles'].toString().isNotEmpty) {
-            final savedRoles = data['preferred_roles'].toString().split(', ');
+          // role 파싱
+          if (data['role'] != null && data['role'].toString().isNotEmpty) {
+            final savedRoles = data['role'].toString().split(', ');
             for (var r in savedRoles) {
               if (roles.contains(r)) {
                 selectedRoles.add(r);
@@ -113,9 +112,9 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
             }
           }
 
-          // hobbies 파싱
-          if (data['hobbies'] != null && data['hobbies'].toString().isNotEmpty) {
-            final savedHobbies = data['hobbies'].toString().split(', ');
+          // hobby 파싱
+          if (data['hobby'] != null && data['hobby'].toString().isNotEmpty) {
+            final savedHobbies = data['hobby'].toString().split(', ');
             for (var h in savedHobbies) {
               if (hobbies.contains(h)) {
                 selectedHobbies.add(h);
@@ -165,30 +164,28 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     setState(() => isSaving = true);
 
     try {
-      // 프로필 저장
       final Map<String, dynamic> profileData = {
-        'display_name': nameController.text.trim(),
-        'major': majorController.text.trim(),
+        'display_name': nameController.text.trim()
       };
+      if (majorController.text.trim().isNotEmpty) {
+        profileData['major'] = majorController.text.trim();
+      }
       if (selectedMBTI != null) profileData['mbti'] = selectedMBTI;
       if (personalityController.text.trim().isNotEmpty) {
         profileData['personality_summary'] = personalityController.text.trim();
       }
       if (selectedRoles.isNotEmpty || customRoles.isNotEmpty) {
-        profileData['preferred_roles'] = [...selectedRoles, ...customRoles].join(', ');
+        profileData['role'] = [...selectedRoles, ...customRoles].join(', ');
       }
       if (selectedHobbies.isNotEmpty || customHobbies.isNotEmpty) {
-        profileData['hobbies'] = [...selectedHobbies, ...customHobbies].join(', ');
+        profileData['hobby'] = [...selectedHobbies, ...customHobbies].join(', ');
       }
-
       await http.patch(
         Uri.parse('$baseUrl/profile/me'),
         headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ${widget.token}'},
         body: jsonEncode(profileData),
       );
-
       // 기존 시간표 삭제 후 새로 저장
-      // 1. 서버에 있는 기존 일정 삭제
       final existingSchedules = scheduleItems.where((s) => s['serverId'] != null).toList();
       for (var item in existingSchedules) {
         await http.delete(
@@ -197,7 +194,6 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         );
       }
 
-      // 2. 현재 일정 전부 새로 저장
       for (var item in scheduleItems) {
         final startTime = '${item['startHour'].toString().padLeft(2, '0')}:${item['startMin'].toString().padLeft(2, '0')}';
         final endTime = '${item['endHour'].toString().padLeft(2, '0')}:${item['endMin'].toString().padLeft(2, '0')}';
@@ -431,7 +427,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                           ]),
                         ),
                         const Spacer(),
-                        const Text('프로필 수정', style: TextStyle(color: primaryColor, fontSize: 18, fontWeight: FontWeight.w700)),
+                        const Text('프로필 편집', style: TextStyle(color: primaryColor, fontSize: 18, fontWeight: FontWeight.w700)),
                         const Spacer(),
                         const SizedBox(width: 70),
                       ],

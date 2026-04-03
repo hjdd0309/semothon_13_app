@@ -1,10 +1,21 @@
 import os
 from openai import OpenAI
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app import schemas, models
 from app.models import AIContext, Room
+import json
+import re
+import logging
+from datetime import datetime, timezone
+from typing import List, Optional
+from sqlalchemy.exc import IntegrityError
+
+from app.database import get_db
+from app import schemas, models
+from app.config import settings
+
 
 import json
 
@@ -160,9 +171,8 @@ def build_system_ice_breaking_prompt() -> str:
     return """
 너는 경희대 팀 프로젝트를 돕는 친근한 AI 코치다.
 상냥하게 진행자처럼 말하면 된다.
-이모지는 쓰지 말아야 한다.
 반드시 주어진 JSON 스키마에 맞는 JSON만 반환해야 한다.
-JSON 바깥의 설명, 코드블록, 마크다운은 절대 출력하지 마라.
+JSON 바깥의 설명, 코드블록, 마크다운은 절대 출력하지 말아라.
 """.strip()
 
 
@@ -456,20 +466,329 @@ def recommend_topics(request: schemas.TopicRecommendRequest, db: Session = Depen
             detail=f"AI 응답 파싱 실패. 원본 응답: {raw_text[:300]}"
         )
 
+    # 9. DB 저장 (방식 A: 추천된 3가지 주제 리스트를 모두 저장)
+    try:
+        # 기존의 활성화된 주제 추천 컨텍스트 비활성화
+        db.query(AIContext).filter(
+            AIContext.room_id == request.room_id,
+            AIContext.context_type == "topic_recommendation",
+            AIContext.is_active == True
+        ).update({"is_active": False}, synchronize_session=False)
+
+        new_ai_context = AIContext(
+            room_id=request.room_id,
+            context_type="topic_recommendation",
+            title=f"{request.subject} 주제 추천 결과",
+            context_json={"topics": topics_data},  # 3가지 추천 주제 리스트 저장
+            summary_text=f"'{request.subject}' 과목에 대해 {len(topics_data)}가지 프로젝트 주제를 추천함.",
+            is_active=True,
+            version=1
+        )
+        db.add(new_ai_context)
+        db.commit()
+        db.refresh(new_ai_context)
+    except Exception as e:
+        db.rollback()
+        # 저장 실패가 전체 로직에 영향을 주지는 않되, 로그는 남김 (추후 개선 가능)
+        print(f"주제 추천 결과 저장 중 오류 발생: {str(e)}")
+
     return schemas.TopicRecommendResponse(success=True, topics=topics)
 
 
-@router.post("/tasks", response_model=schemas.TaskDistributeResponse)
-def distribute_tasks(request: schemas.TaskDistributeRequest, db: Session = Depends(get_db)):
+
+# ─── Logger ───
+logger = logging.getLogger(__name__)
+
+# ─── Constants ───
+VALID_PRIORITIES = {"LOW", "MEDIUM", "HIGH"}
+DEFAULT_PRIORITY = "MEDIUM"
+
+
+if api_key:
+    client = OpenAI(
+        api_key=api_key,
+        base_url="https://factchat-cloud.mindlogic.ai/v1/gateway",
+    )
+
+MODEL_NAME = "claude-sonnet-4-6"
+
+
+# ─── Helper Functions ───
+
+def safe_profile(user: models.User, field: str) -> str:
+    """UserProfile 관계가 None이거나 해당 필드가 없을 때 안전하게 반환."""
+    if user.profile is None:
+        return "미입력"
+    value = getattr(user.profile, field, None)
+    return value.strip() if isinstance(value, str) and value.strip() else "미입력"
+
+
+def to_utc(dt: Optional[datetime]) -> Optional[datetime]:
+    """datetime을 UTC로 변환. None이면 None 반환."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def extract_json_safe(text: str) -> dict:
+    """AI 응답에서 JSON을 안전하게 추출.
+    - 순수 JSON이면 바로 파싱
+    - ```json ... ``` 코드 블록이 있으면 내부만 추출
+    - 그 외 첫 번째 { ... } 블록을 시도
     """
-    [Phase 3] 프로젝트 To-Do 생성 및 분배 API
-    """
+    if text is None:
+        raise ValueError("AI 응답이 비어 있습니다.")
+
+    text = text.strip()
+
+    # 1) 직접 파싱 시도
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+
+    # 2) ```json ... ``` 코드 블록 추출
+    match = re.search(r"```(?:json)?\s*([\s\S]*?)```", text)
+    if match:
+        try:
+            return json.loads(match.group(1).strip())
+        except json.JSONDecodeError:
+            pass
+
+    # 3) 첫 번째 { ... } 블록 추출 (중첩 고려)
+    start = text.find("{")
+    if start != -1:
+        depth = 0
+        for i in range(start, len(text)):
+            if text[i] == "{":
+                depth += 1
+            elif text[i] == "}":
+                depth -= 1
+            if depth == 0:
+                try:
+                    return json.loads(text[start : i + 1])
+                except json.JSONDecodeError:
+                    break
+
+    raise ValueError(f"유효한 JSON을 찾을 수 없습니다: {text[:200]}")
+
+
+# ─── Endpoint ───
+
+@router.post("/distribute", response_model=schemas.TaskDistributeResponse)
+def distribute_tasks(
+    request: schemas.TaskDistributeRequest,
+    db: Session = Depends(get_db),
+):
     if not client:
-         raise HTTPException(status_code=500, detail="API Key is not configured")
-         
+        raise HTTPException(status_code=503, detail="AI 서비스를 사용할 수 없습니다.")
+
+    # 1) 방 멤버 조회
+    members: List[models.User] = (
+        db.query(models.User)
+        .options(joinedload(models.User.profile))
+        .join(models.RoomMember, models.User.id == models.RoomMember.user_id)
+        .filter(
+            models.RoomMember.room_id == request.room_id,
+            models.RoomMember.join_status == "joined",
+        )
+        .all()
+    )
+
+    if not members:
+        raise HTTPException(status_code=404, detail="방에 활성 멤버가 없습니다.")
+
+    valid_user_ids: set[int] = {m.id for m in members}
+
+    # 2) 프롬프트 구성
+    team_context = "\n".join(
+        f"ID:{m.id} | {m.username} | "
+        f"전공:{safe_profile(m, 'major')} | "
+        f"MBTI:{safe_profile(m, 'mbti')} | "
+        f"성향:{safe_profile(m, 'personality_summary')} | "
+        f"역할:{safe_profile(m, 'role')}"
+        for m in members
+    )
+
+    deadline_str = (
+        to_utc(request.deadline).strftime("%Y-%m-%d %H:%M")
+        if request.deadline
+        else "자율"
+    )
+
+
+    system_prompt = (
+    "너는 효율성을 중시하는 '냉철하고 직관적인 IT 프로젝트 매니저'다. "
+    "팀원들에게 업무를 분배할 때, 감성적인 수식어는 배제하고 전문적인 비즈니스 문체(격식체 또는 정중한 평어)를 사용해라. "
+    "단순히 업무를 나열하는 게 아니라, 해당 팀원의 데이터(MBTI, 전공, 보유 스택 등)를 근거로 왜 이 업무가 배정되었는지 논리적으로 설명해야 한다. "
+    "말투 예시: '000님, ~분야를 맡아주세요. ~한 특성을 고려할 때 이 업무에 가장 적합하다고 판단됩니다. ~방향으로 설계해 주시기 바랍니다.'"
+    )
+
+    user_prompt = f"""
+    # [프로젝트 개요]
+    - 주제: {request.final_topic}
+    - 마감: {deadline_str}
+
+    # [팀원 명단]
+    {team_context}
+
+    # [주요 업무 카테고리]
+    1. 자료 조사 및 시장 분석: 주제 관련 데이터 수집 및 경쟁 서비스 분석
+    2. 서비스 기획 및 요구사항 정의: 기능 리스트업 및 프로세스 설계
+    3. 백엔드 시스템 설계 및 개발: API 명세, DB 스키마 및 서버 로직 구현
+    4. 프론트엔드 UI/UX 개발: 화면 설계 및 클라이언트 기능 구현
+    5. PPT 및 발표 자료 제작: 최종 피칭용 시각 자료 제작
+    6. 최종 발표 및 시연: 프로젝트 결과물 PT 및 데모 진행
+
+    # [출력 형식 - JSON]
+    {{
+    "tasks": [
+        {{
+        "title": "업무 명칭 (명사형으로 깔끔하게)",
+        "description": "업무 범위와 최종 산출물을 기술적으로 설명",
+        "assigned_user_id": 숫자,
+        "priority": "LOW | MEDIUM | HIGH",
+        "reason": "팀원의 정보(성격, 전공 등)를 기반으로 한 직관적이고 논리적인 배정 근거"
+        }}
+    ]
+    }}
+
+    # [수행 규칙]
+    - 주제와 관련 없는 업무 카테고리는 과감히 제외할 것. (예: 보고서 중심 프로젝트면, 개발 업무는 제외)
+    - 'reason' 필드에서 '심장부', '따뜻한', '함께 고민해봐요' 같은 감성적 표현은 절대 금지.
+    - 구체적인 근거를 제시할 것 (예: '기술 스택 정보가 없으나, 전공 역량을 고려해 ~를 배정함').
+    - 모든 팀원에게 최소 1개 이상의 업무를 반드시 배분할 것.
+    - 마감일({deadline_str})을 기준으로 우선순위를 판단할 것.
+    - priority, reason, description 항목에서 이모지는 제거할것.
+    """
+    # 3) AI API 호출
+    try:
+        api_kwargs = dict(
+            model=MODEL_NAME,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.3,
+        )
+        # response_format은 일부 모델/게이트웨이에서 미지원 → 실패 시 제외하고 재시도
+        try:
+            api_kwargs["response_format"] = {"type": "json_object"}
+            response = client.chat.completions.create(**api_kwargs)
+        except Exception:
+            logger.warning("response_format 미지원 — 제외 후 재시도")
+            api_kwargs.pop("response_format", None)
+            response = client.chat.completions.create(**api_kwargs)
+
+        ai_content = response.choices[0].message.content
+
+    except Exception as e:
+        logger.error("AI API 호출 실패: %s", e, exc_info=True)
+        raise HTTPException(
+            status_code=502,
+            detail="AI 서비스 호출에 실패했습니다. 잠시 후 다시 시도해주세요.",
+        )
+
+    # 4) JSON 파싱
+    try:
+        task_data = extract_json_safe(ai_content)
+    except ValueError as e:
+        logger.error("JSON 파싱 실패 | 원본: %.200s | 오류: %s", ai_content, e)
+        raise HTTPException(status_code=500, detail="AI 응답을 처리할 수 없습니다.")
+
+    raw_tasks = task_data.get("tasks")
+    if not isinstance(raw_tasks, list) or not raw_tasks:
+        logger.error("AI 응답 구조 오류: %s", task_data)
+        raise HTTPException(status_code=500, detail="AI가 올바른 태스크를 생성하지 못했습니다.")
+
+    # 5) 태스크 검증
+    validated_tasks = []
+
+    for i, t in enumerate(raw_tasks, start=1):
+        title = (t.get("title") or "").strip()
+        if not title:
+            raise HTTPException(status_code=500, detail=f"{i}번째 태스크에 title이 없습니다.")
+
+        assigned_id = t.get("assigned_user_id")
+        if assigned_id not in valid_user_ids:
+            logger.warning(
+                "잘못된 user_id 반환됨: %s (유효: %s)", assigned_id, valid_user_ids
+            )
+            raise HTTPException(
+                status_code=500,
+                detail=f"\'{title}\': AI가 잘못된 팀원 ID를 반환했습니다.",
+            )
+
+        priority = (t.get("priority") or DEFAULT_PRIORITY).upper().strip()
+        if priority not in VALID_PRIORITIES:
+            logger.warning(
+                "잘못된 priority '%s' → MEDIUM 폴백 (task: %s)", priority, title
+            )
+            priority = DEFAULT_PRIORITY
+
+        validated_tasks.append(
+            {
+                "title": title,
+                "description": (t.get("description") or "").strip(),
+                "assigned_user_id": assigned_id,
+                "priority": priority,
+                "reason": (t.get("reason") or "").strip(),
+            }
+        )
+
+    unassigned = valid_user_ids - {t["assigned_user_id"] for t in validated_tasks}
+    if unassigned:
+        raise HTTPException(
+            status_code=500,
+            detail=f"일부 팀원에게 태스크가 배정되지 않았습니다. (미배정 ID: {sorted(unassigned)})",
+        )
+
+    # 6) DB 저장
+    try:
+        task_objects: List[models.Task] = [
+            models.Task(
+                room_id=request.room_id,
+                assigned_user_id=t["assigned_user_id"],
+                title=t["title"],
+                description=t["description"],
+                priority=t["priority"],
+                due_date=to_utc(request.deadline),   # None이면 None 저장 (안전)
+                created_by="AI",
+                status="TODO",
+                progress_percent=0,
+            )
+            for t in validated_tasks
+        ]
+
+        db.add_all(task_objects)
+        db.flush()
+        db.commit()
+
+    except IntegrityError as e:
+        db.rollback()
+        logger.error("DB 무결성 오류: %s", e, exc_info=True)
+        raise HTTPException(
+            status_code=400, detail="데이터 저장 중 무결성 오류가 발생했습니다."
+        )
+    except Exception as e:
+        db.rollback()
+        logger.error("DB 저장 실패: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="데이터 저장에 실패했습니다.")
+
+    # 7) 응답 반환
     return schemas.TaskDistributeResponse(
         success=True,
-        tasks=[]
+        tasks=[
+            schemas.GeneratedTask(
+                title=obj.title,
+                description=obj.description or "",
+                assigned_user_id=obj.assigned_user_id,
+                reason=vt["reason"],
+            )
+            for obj, vt in zip(task_objects, validated_tasks)
+        ],
     )
 
 def build_system_chat_prompt() -> str:
@@ -482,6 +801,21 @@ def build_system_chat_prompt() -> str:
 정보가 부족하면 과도하게 추측하지 말고, 부족한 점을 자연스럽게 언급하라.
 """.strip()
 
+@router.post("/chat", response_model=schemas.ChatMessageResponse)
+def chat_with_bot(request: schemas.ChatMessageRequest, db: Session = Depends(get_db)):
+    """
+    [Phase 4] 팀 통합 데이터베이스 AI Q&A API
+    해당 룸(방)에 존재하는 과거 채팅 트래킹 포함
+    """
+    
+    if not client:
+         raise HTTPException(status_code=500, detail="API Key is not configured")
+         
+    # 사용자 메시지 DB 저장 (발신: USER)
+    new_message = models.ChatMessage(room_id=request.room_id, message=request.message, sender_type="USER")
+    db.add(new_message)
+    db.commit()
+    db.refresh(new_message)
 
 def build_chat_prompt(summary_text: str, question: str) -> str:
     return f"""

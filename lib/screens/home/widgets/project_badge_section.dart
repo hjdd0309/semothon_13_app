@@ -21,11 +21,12 @@ class ProjectBadgeSection extends StatelessWidget {
           ),
         ),
         SizedBox(height: 12),
-        Row(
+        // Added 'const' here to the Row
+        const Row(
           children: [
             Expanded(
               child: _ProjectBadgeCard(
-                imagePath: 'assets/images/hikhuong-nk.png',
+                imagePath: 'assets/images/2nd.png',
                 projectName: '세계와 시민',
                 participation: '참여율 80%',
               ),
@@ -33,16 +34,16 @@ class ProjectBadgeSection extends StatelessWidget {
             SizedBox(width: 10),
             Expanded(
               child: _ProjectBadgeCard(
-                imagePath: 'assets/images/hikhuong-nk.png',
+                imagePath: 'assets/images/1st.png',
                 projectName: '소프트웨어공학',
-                participation: '참여율 65%',
+                participation: '참여율 95%',
               ),
             ),
             SizedBox(width: 10),
             Expanded(
               child: _ProjectBadgeCard(
-                imagePath: 'assets/images/hikhuong-nk.png',
-                projectName: '데이터베이스',
+                imagePath: 'assets/images/3rd.png',
+                projectName: '캡스톤 디자인',
                 participation: '참여율 40%',
               ),
             ),
@@ -53,6 +54,7 @@ class ProjectBadgeSection extends StatelessWidget {
   }
 }
 
+// Ensure the sub-widget has a const constructor (which yours already does)
 class _ProjectBadgeCard extends StatelessWidget {
   final String imagePath;
   final String projectName;
@@ -84,11 +86,11 @@ class _ProjectBadgeCard extends StatelessWidget {
         children: [
           Image.asset(
             imagePath,
-            width: 42,
-            height: 42,
+            width: 100,
+            height: 80,
             fit: BoxFit.contain,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 3),
           Text(
             projectName,
             textAlign: TextAlign.center,

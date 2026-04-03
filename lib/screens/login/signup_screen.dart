@@ -62,8 +62,23 @@ class _SignupScreenState extends State<SignupScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Image.asset('assets/images/happykhuong.png', width: 90, height: 90, fit: BoxFit.contain),
-                  const SizedBox(height: 16),
+                 Container(
+  width: 160,
+  height: 160,
+  decoration: const BoxDecoration(
+    color: Colors.white,
+    shape: BoxShape.circle,
+  ),
+  child: Center(
+    child: Image.asset(
+      'assets/images/happykhuong.png',
+      width: 250,
+      height: 250,
+      fit: BoxFit.contain,
+    ),
+  ),
+),
+                  const SizedBox(height: 25),
                   const Text('회원가입 성공!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF3A2A2A))),
                   const SizedBox(height: 10),
                   Text(data['message'] ?? '회원가입이 완료되었습니다.', textAlign: TextAlign.center, style: const TextStyle(fontSize: 14, color: Color(0xFF7D6666), height: 1.4)),

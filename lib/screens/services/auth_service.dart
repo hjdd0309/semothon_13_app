@@ -1,10 +1,11 @@
 import 'dart:convert';
-
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
   static const String _baseUrl =
       'https://semothon13app-production.up.railway.app';
+  static const String _tokenKey = 'access_token';
 
   Future<String> login({
     required String username,
@@ -28,6 +29,10 @@ class AuthService {
       if (token.isEmpty) {
         throw Exception('로그인 응답에 access_token이 없습니다.');
       }
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_tokenKey, token);
+
       return token;
     }
 
@@ -35,6 +40,18 @@ class AuthService {
         data['message']?.toString() ??
         '로그인에 실패했어요.';
     throw Exception(message);
+  }
+
+  Future<String?> getSavedToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey);
+    if (token == null || token.trim().isEmpty) return null;
+    return token;
+  }
+
+  Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_tokenKey);
   }
 
   Future<void> signup({

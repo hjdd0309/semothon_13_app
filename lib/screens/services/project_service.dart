@@ -11,6 +11,8 @@ class ProjectService {
 
   String? _accessToken;
 
+  String? get accessToken => _accessToken;
+
   ProjectService({
     required this.baseUrl,
     http.Client? client,
@@ -35,9 +37,12 @@ class ProjectService {
     if (token != null && token.isNotEmpty) {
       headers['Authorization'] = 'Bearer $token';
     }
-
     return headers;
   }
+
+  // =========================
+  // 프로젝트
+  // =========================
 
   Future<List<ProjectDetailModel>> fetchProjects() async {
     final response = await client.get(
@@ -129,6 +134,10 @@ class ProjectService {
     });
   }
 
+  // =========================
+  // 팀원 (현재 백엔드 없음 → fallback용)
+  // =========================
+
   Future<void> createMember({
     required String projectNumber,
     required String name,
@@ -145,19 +154,53 @@ class ProjectService {
     required String name,
     required String studentId,
   }) async {
-    throw UnsupportedError(
-      '현재 백엔드 명세에는 팀원 수정 API가 없습니다.',
-    );
+    throw UnsupportedError('팀원 수정 API 없음');
   }
 
   Future<void> deleteMember({
     required String projectNumber,
     required int memberId,
   }) async {
+    throw UnsupportedError('팀원 삭제 API 없음');
+  }
+
+  // =========================
+  // 역할 (🔥 핵심 추가 부분)
+  // =========================
+
+  Future<void> createRole({
+    required String projectNumber,
+    required String title,
+    required int assigneeId,
+  }) async {
     throw UnsupportedError(
-      '현재 백엔드 명세에는 팀원 삭제 API가 없습니다.',
+      '현재 백엔드 명세에는 역할 생성 API가 없습니다.',
     );
   }
+
+  Future<void> updateRole({
+    required String projectNumber,
+    required int roleId,
+    required String title,
+    required int assigneeId,
+  }) async {
+    throw UnsupportedError(
+      '현재 백엔드 명세에는 역할 수정 API가 없습니다.',
+    );
+  }
+
+  Future<void> deleteRole({
+    required String projectNumber,
+    required int roleId,
+  }) async {
+    throw UnsupportedError(
+      '현재 백엔드 명세에는 역할 삭제 API가 없습니다.',
+    );
+  }
+
+  // =========================
+  // 일정
+  // =========================
 
   Future<void> createSchedule({
     required String projectNumber,
@@ -218,6 +261,10 @@ class ProjectService {
     _throwIfFailed(response, '일정 삭제 실패', allow204: true);
   }
 
+  // =========================
+  // Task / Chat / Notification
+  // =========================
+
   Future<void> createTask({
     required String projectNumber,
     required int roleId,
@@ -226,9 +273,7 @@ class ProjectService {
     required String priority,
     required String source,
   }) async {
-    throw UnsupportedError(
-      '현재 백엔드 명세에는 역할/업무 생성 API가 없습니다.',
-    );
+    throw UnsupportedError('업무 생성 API 없음');
   }
 
   Future<void> updateTask({
@@ -238,9 +283,7 @@ class ProjectService {
     DateTime? dueDate,
     bool? done,
   }) async {
-    throw UnsupportedError(
-      '현재 백엔드 명세에는 역할/업무 수정 API가 없습니다.',
-    );
+    throw UnsupportedError('업무 수정 API 없음');
   }
 
   Future<void> deleteTask({
@@ -248,9 +291,7 @@ class ProjectService {
     required int roleId,
     required int taskId,
   }) async {
-    throw UnsupportedError(
-      '현재 백엔드 명세에는 역할/업무 삭제 API가 없습니다.',
-    );
+    throw UnsupportedError('업무 삭제 API 없음');
   }
 
   Future<void> sendChat({
@@ -258,22 +299,20 @@ class ProjectService {
     required String message,
     required bool isFile,
   }) async {
-    throw UnsupportedError(
-      '현재 백엔드 명세에는 채팅 전송 API가 없습니다.',
-    );
+    throw UnsupportedError('채팅 API 없음');
   }
 
   Future<void> readAllNotifications(String projectNumber) async {
-    throw UnsupportedError(
-      '현재 백엔드 명세에는 알림 읽음 처리 API가 없습니다.',
-    );
+    throw UnsupportedError('알림 API 없음');
   }
 
   Future<void> readAllChat(String projectNumber) async {
-    throw UnsupportedError(
-      '현재 백엔드 명세에는 채팅 읽음 처리 API가 없습니다.',
-    );
+    throw UnsupportedError('채팅 읽음 API 없음');
   }
+
+  // =========================
+  // 공통
+  // =========================
 
   void _throwIfFailed(
     http.Response response,

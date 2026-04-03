@@ -1,9 +1,13 @@
-from fastapi import FastAPI,APIRouter
+from fastapi import FastAPI, APIRouter
 from app.database import test_db_connection
 from .schemas import DBCheckResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers import auth, files, rooms, profile, schedules, task, ai, chat
+from app.database import Base, engine
+from app import models
+
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
@@ -22,13 +26,11 @@ app.include_router(profile.router)
 app.include_router(schedules.router)
 app.include_router(task.router)
 app.include_router(ai.router)
-app.include_router(chat.router)
-
+app.include_router(chat.router) # 윤성님 추가분
 
 @app.get("/")
 def root():
     return {"message": "FastAPI server is running"}
-
 
 @app.get(
     "/db-check",

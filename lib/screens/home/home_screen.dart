@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/project_detail_model.dart';
 import '../services/project_service.dart';
+import '../services/auth_service.dart';
 import 'project_detail_screen.dart';
 import 'widgets/home_calendar_card.dart';
 import 'widgets/home_today_ai_card.dart';
@@ -12,9 +13,15 @@ import 'widgets/project_badge_section.dart';
 
 class HomeScreen extends StatefulWidget {
   final String? userName;
-  final String? token;
+  final AuthService authService;
+  final ProjectService projectService;
 
-  const HomeScreen({super.key, this.userName, this.token});
+  const HomeScreen({
+    super.key,
+    this.userName,
+    required this.authService,
+    required this.projectService,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -35,6 +42,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   String displayName = '';
   late final ProjectService _projectService;
+  late final AuthService _authService;
 
   bool _isLoadingProjects = true;
   String? _projectLoadError;
@@ -42,30 +50,27 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void initState() {
-  super.initState();
-  displayName = (widget.userName ?? '').trim();
+    super.initState();
+    displayName = (widget.userName ?? '').trim();
 
-
-    _projectService = ProjectService(
-      baseUrl: baseUrl,
-      accessToken: widget.token,
-    );
+    _projectService = widget.projectService;
+    _authService = widget.authService;
 
     _loadProfile();
     _loadProjects();
   }
 
   Future<void> _loadProfile() async {
-    final token = widget.token?.trim() ?? '';
-if (token.isEmpty) return;
+    final token = _projectService.accessToken?.trim() ?? '';
+    if (token.isEmpty) return;
 
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/profile/me'),
         headers: {
-    'Authorization': 'Bearer $token',
-    'Content-Type': 'application/json',
-  },
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
       );
 
       if (response.statusCode == 200) {
@@ -157,14 +162,16 @@ Future<void> _loadProjects() async {
       barrierColor: Colors.black.withOpacity(0.25),
       builder: (dialogContext) {
         return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(22),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
+  backgroundColor: Colors.white,
+  surfaceTintColor: Colors.white,
+  shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(24),
+  ),
+  child: Padding(
+    padding: const EdgeInsets.all(22),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
                 const Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
@@ -305,10 +312,12 @@ Future<void> _loadProjects() async {
       barrierColor: Colors.black.withOpacity(0.25),
       builder: (dialogContext) {
         return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Padding(
+  backgroundColor: Colors.white,
+  surfaceTintColor: Colors.white,
+  shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(24),
+  ),
+  child: Padding(
             padding: const EdgeInsets.all(22),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -746,16 +755,15 @@ Future<void> _loadProjects() async {
   crossAxisAlignment: CrossAxisAlignment.start,
   children: [
     _buildTopSection(context),
-    const SizedBox(height: 22),
-    const ProjectBadgeSection(),
-    const SizedBox(height: 22),
-    const HomeTodayAiCard(),
-    const SizedBox(height: 18),
-    const HomeCalendarCard(),
-    const SizedBox(height: 18),
-    _buildActionButtons(context),
+const SizedBox(height: 22),
+_buildActionButtons(context),
+const SizedBox(height: 18),
+const ProjectBadgeSection(),
+const SizedBox(height: 22),
+const HomeTodayAiCard(),
+const SizedBox(height: 18),
+const HomeCalendarCard(),
     const SizedBox(height: 24),
-    _buildProjectIntroCard(),
 if (_projectLoadError != null) ...[
   const SizedBox(height: 14),
   Container(
@@ -780,40 +788,12 @@ if (_projectLoadError != null) ...[
   ),
 ],
 const SizedBox(height: 18),
-SizedBox(
-  width: double.infinity,
-  height: 46,
-  child: ElevatedButton.icon(
-    onPressed: _showAddProjectDialog,
-    icon: const Icon(
-      Icons.add,
-      size: 18,
-      color: Colors.white,
-    ),
-    label: const Text(
-      '새 프로젝트 추가',
-      style: TextStyle(
-        fontSize: 15,
-        fontWeight: FontWeight.w700,
-        color: Colors.white,
-      ),
-    ),
-    style: ElevatedButton.styleFrom(
-      elevation: 0,
-      backgroundColor: primaryColor,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-    ),
-  ),
-),
-const SizedBox(height: 22),
 const Text(
-  '✶ 내 프로젝트',
+  '  내 프로젝트 목록',
   style: TextStyle(
-    color: primaryColor,
-    fontSize: 24,
-    fontWeight: FontWeight.w600,
+    fontSize: 21,
+    fontWeight: FontWeight.w900,
+    color: Color(0xFF3A2A2A),
   ),
 ),
 const SizedBox(height: 14),
@@ -889,7 +869,9 @@ Widget _buildTopSection(BuildContext context) {
                       await Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => ProfileEditScreen(token: widget.token),
+                          builder: (_) => ProfileEditScreen(
+                            token: _projectService.accessToken,
+                          ),
                         ),
                       );
                       _loadProfile();
@@ -962,11 +944,21 @@ Widget _buildTopSection(BuildContext context) {
         top: 0,
         right: 0,
         child: OutlinedButton(
-          onPressed: () {
+          onPressed: () async {
+            await _authService.logout();
+            _projectService.clearAccessToken();
+
+            if (!mounted) return;
+
             Navigator.pushAndRemoveUntil(
               context,
-              MaterialPageRoute(builder: (_) => const LoginScreen()),
-              (route) => false,
+              MaterialPageRoute(
+                builder: (_) => LoginScreen(
+                  authService: _authService,
+                  projectService: _projectService,
+                ),
+              ),
+                  (route) => false,
             );
           },
           style: OutlinedButton.styleFrom(
@@ -975,7 +967,7 @@ Widget _buildTopSection(BuildContext context) {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
             minimumSize: Size.zero,
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
@@ -1024,65 +1016,213 @@ Widget _buildTodayTaskItem(String text) {
     ),
   );
 }
-  Widget _buildActionButtons(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: SizedBox(
-            height: 56,
-            child: OutlinedButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.add, color: primaryColor, size: 20),
-              label: const Text(
-                '새 팀 생성하기',
-                style: TextStyle(
-                  color: Color(0xFF4B3A3A),
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
+  Future<void> _showJoinByCodeDialog() async {
+    final codeController = TextEditingController();
+    bool isJoining = false;
+
+    await showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.25),
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(22),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        '팀 코드로 참여하기',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF3A2A2A),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        '팀장에게 받은 초대 코드를 입력하세요',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF7D6666),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    _DialogField(
+                      controller: codeController,
+                      label: '초대 코드',
+                      hintText: '예: ABC123',
+                    ),
+                    const SizedBox(height: 22),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.of(dialogContext).pop(),
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size.fromHeight(48),
+                              side: const BorderSide(color: borderColor),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Text(
+                              '취소',
+                              style: TextStyle(
+                                color: Color(0xFF7D6666),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: isJoining
+                                ? null
+                                : () async {
+                              final code = codeController.text.trim();
+                              if (code.isEmpty) return;
+
+                              setDialogState(() => isJoining = true);
+
+                              try {
+                                final token = _projectService.accessToken ?? '';
+                                final response = await http.post(
+                                  Uri.parse('$baseUrl/rooms/join-by-invite-code'),
+                                  headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': 'Bearer $token',
+                                  },
+                                  body: jsonEncode({'invite_code': code}),
+                                );
+
+                                final data = jsonDecode(response.body);
+
+                                if (!mounted) return;
+
+                                if (response.statusCode == 200) {
+                                  Navigator.of(dialogContext).pop();
+                                  _showSnackBar(
+                                    '${data['title']} 팀에 참여했어요!',
+                                  );
+                                  _loadProjects();
+                                } else {
+                                  setDialogState(() => isJoining = false);
+                                  _showSnackBar(
+                                    data['detail']?.toString() ?? '참여에 실패했어요',
+                                  );
+                                }
+                              } catch (e) {
+                                if (!mounted) return;
+                                setDialogState(() => isJoining = false);
+                                _showSnackBar('서버 연결 실패: $e');
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: primaryColor,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              minimumSize: const Size.fromHeight(48),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: isJoining
+                                ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                                : const Text(
+                              '참여하기',
+                              style: TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-              style: OutlinedButton.styleFrom(
-                backgroundColor: const Color(0xFFFFFAFA),
-                side: const BorderSide(color: borderColor),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: SizedBox(
-            height: 56,
-            child: OutlinedButton.icon(
-              onPressed: () {},
-              icon: const Icon(
-                Icons.groups_2_outlined,
-                color: primaryColor,
-                size: 18,
-              ),
-              label: const Text(
-                '팀 코드로 참여하기',
-                style: TextStyle(
-                  color: Color(0xFF4B3A3A),
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              style: OutlinedButton.styleFrom(
-                backgroundColor: const Color(0xFFFFFAFA),
-                side: const BorderSide(color: borderColor),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
+            );
+          },
+        );
+      },
     );
   }
+Widget _buildActionButtons(BuildContext context) {
+  return Row(
+    children: [
+      Expanded(
+        child: SizedBox(
+          height: 56,
+          child: OutlinedButton.icon(
+            onPressed: _showAddProjectDialog,
+            icon: const Icon(Icons.add, color: primaryColor, size: 20),
+            label: const Text(
+              '새 팀 생성하기',
+              style: TextStyle(
+                color: Color(0xFF4B3A3A),
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            style: OutlinedButton.styleFrom(
+              backgroundColor: const Color(0xFFFFFAFA),
+              side: const BorderSide(color: borderColor),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+          ),
+        ),
+      ),
+      const SizedBox(width: 10),
+      Expanded(
+        child: SizedBox(
+          height: 56,
+          child: OutlinedButton.icon(
+            onPressed: _showJoinByCodeDialog,
+            icon: const Icon(
+              Icons.groups_2_outlined,
+              color: primaryColor,
+              size: 18,
+            ),
+            label: const Text(
+              '팀 코드로 참여',
+              style: TextStyle(
+                color: Color(0xFF4B3A3A),
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            style: OutlinedButton.styleFrom(
+              backgroundColor: const Color(0xFFFFFAFA),
+              side: const BorderSide(color: borderColor),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ],
+  );
+}
 
   Widget _buildProfileEditCard(BuildContext context) {
     return Material(
@@ -1093,7 +1233,9 @@ Widget _buildTodayTaskItem(String text) {
           await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => ProfileEditScreen(token: widget.token),
+               builder: (_) => ProfileEditScreen(
+                token: _projectService.accessToken,
+                ),
             ),
           );
           _loadProfile();
@@ -1174,9 +1316,416 @@ Widget _buildTodayTaskItem(String text) {
                   ),
                 ],
               ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+Widget _buildProjectIntroCard() {
+  return Material(
+    color: Colors.transparent,
+    child: InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: _showAddProjectDialog,
+      child: Ink(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFEAE1E1)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x0D000000),
+              blurRadius: 10,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '새 프로젝트 추가',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF3A2A2A),
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.add_circle_outline_rounded,
+                  color: primaryColor,
+                  size: 22,
+                ),
+              ],
+            ),
+            SizedBox(height: 8),
+            Text(
+              '새 프로젝트를 만들고 팀플을 바로 시작해보세요.',
+              style: TextStyle(
+                fontSize: 14,
+                color: Color(0xFF6B5B5B),
+                height: 1.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+}
+
+class _ProjectCard extends StatelessWidget {
+  final ProjectDetailModel project;
+  final Color statusColor;
+  final String summaryStatus;
+  final String updatedText;
+  final VoidCallback onTap;
+  final VoidCallback onMoreTap;
+
+  const _ProjectCard({
+    required this.project,
+    required this.statusColor,
+    required this.summaryStatus,
+    required this.updatedText,
+    required this.onTap,
+    required this.onMoreTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Ink(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFCFBFB),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Color(0xFFE7C9C9)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0D000000),
+                blurRadius: 10,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      project.projectTitle,
+                      style: const TextStyle(
+                        color: Color(0xFF3A2A2A),
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  InkWell(
+                    onTap: onMoreTap,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.all(9),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF7EFEF),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.more_horiz,
+                        size: 18,
+                        color: Color(0xFF7D6666),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '#${project.projectNumber}',
+                style: const TextStyle(
+                  color: Color(0xFF7D6666),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  summaryStatus,
+                  style: TextStyle(
+                    color: statusColor,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                updatedText,
+                style: const TextStyle(
+                  color: Color(0xFF7D6666),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 14),
+              const Divider(color: Color(0xFFF0E8E4), height: 1),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _InfoChip(
+                    icon: Icons.group_outlined,
+                    text: '${project.members.length}명',
+                  ),
+                  _InfoChip(
+                    icon: Icons.work_outline,
+                    text: '역할 ${project.roles.length}개',
+                  ),
+                  _InfoChip(
+                    icon: Icons.calendar_today_outlined,
+                    text: '일정 ${project.schedules.length}개',
+                  ),
+                ],
+              ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _InfoChip({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F1EE),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 17, color: const Color(0xFF7D6666)),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: const TextStyle(
+              color: Color(0xFF3A2A2A),
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DialogField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final String hintText;
+
+  const _DialogField({
+    required this.controller,
+    required this.label,
+    required this.hintText,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xFF3A2A2A),
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          decoration: InputDecoration(
+            hintText: hintText,
+            hintStyle: const TextStyle(
+              color: Color(0xFFA58787),
+              fontSize: 14,
+            ),
+            filled: true,
+            fillColor: _HomeScreenState.inputFillColor,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 14,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(
+                color: _HomeScreenState.borderColor,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(
+                color: _HomeScreenState.primaryColor,
+                width: 1.2,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MenuTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final VoidCallback onTap;
+  final Color? textColor;
+
+  const _MenuTile({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+    this.textColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = textColor ?? const Color(0xFF3A2A2A);
+
+    return ListTile(
+      onTap: onTap,
+      leading: Icon(icon, color: color),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: color,
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      contentPadding: EdgeInsets.zero,
+      minLeadingWidth: 24,
+    );
+  }
+}
+
+class _EmptyProjectView extends StatelessWidget {
+  const _EmptyProjectView();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 28),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFCFBFB),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFEAE1E1)),
+      ),
+      child: const Column(
+        children: [
+          Icon(
+            Icons.folder_open_outlined,
+            size: 34,
+            color: Color(0xFF7D6666),
+          ),
+          SizedBox(height: 12),
+          Text(
+            '아직 프로젝트가 없습니다.',
+            style: TextStyle(
+              color: Color(0xFF3A2A2A),
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          SizedBox(height: 6),
+          Text(
+            '새 프로젝트를 추가해서 시작해보세요.',
+            style: TextStyle(
+              color: Color(0xFF7D6666),
+              fontSize: 14,
+              height: 1.5,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LoadingProjectView extends StatelessWidget {
+  const _LoadingProjectView();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 28),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFCFBFB),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFEAE1E1)),
+      ),
+      child: const Column(
+        children: [
+          SizedBox(
+            width: 28,
+            height: 28,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.4,
+              color: Color(0xFFA31621),
+            ),
+          ),
+          SizedBox(height: 14),
+          Text(
+            '프로젝트를 불러오는 중입니다...',
+            style: TextStyle(
+              color: Color(0xFF7D6666),
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }
