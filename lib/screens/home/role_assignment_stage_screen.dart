@@ -189,7 +189,17 @@ class _RoleAssignmentStageScreenState extends State<RoleAssignmentStageScreen> {
 
                   Future.delayed(const Duration(milliseconds: 500), () {
                     if (!mounted) return;
-                    Navigator.pop(context);
+
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ProjectDetailScreen(
+                          project: widget.project,
+                          service: widget.service,
+                        ),
+                      ),
+                      (route) => false,
+                    );
                   });
                 },
                 style: ElevatedButton.styleFrom(
