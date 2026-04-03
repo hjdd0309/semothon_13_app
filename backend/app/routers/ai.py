@@ -608,6 +608,14 @@ def distribute_tasks(
     room = db.query(models.Room).filter(models.Room.id == request.room_id).first()
     if not room:
         raise HTTPException(status_code=404, detail="방을 찾을 수 없습니다.")
+    
+    # 요청으로 들어온 주제가 있으면 DB 업데이트
+    if request.final_topic and (not room.topic or room.topic != request.final_topic):
+        room.topic = request.final_topic
+        db.add(room)
+        db.commit()
+        db.refresh(room)
+
     if not room.topic:
         raise HTTPException(status_code=400, detail="방에 설정된 주제가 없습니다.")
 

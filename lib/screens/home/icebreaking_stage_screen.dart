@@ -142,7 +142,7 @@ class _IcebreakingStageScreenState extends State<IcebreakingStageScreen> {
       }
 
       final result = await AIService.getIcebreakingResult(
-        1,
+        int.parse(widget.project.projectNumber),
         widget.project.projectTitle ?? '기본 프로젝트',
         [
           {"user_id": 1, "answers": ["먼저 말 걸고 분위기를 푼다", "자유롭게 아이디어 많이"]},
