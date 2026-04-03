@@ -1,7 +1,7 @@
 import random
 import string
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session, aliased
 
@@ -78,6 +78,24 @@ def _check_room_host(db: Session, room_id: int, user_id: int):
     return member
 
 
+@router.get("/by-subject")
+def get_rooms_by_subject(
+    subject: str = Query(..., description="과목 이름"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    rooms = (
+        db.query(Room)
+        .filter(Room.subject == subject)
+        .all()
+    )
+
+    return {
+        "success": True,
+        "subject": subject,
+        "rooms": rooms
+    }   
+
 @router.post(
     "",
     response_model=RoomCreateResponse,
@@ -100,6 +118,7 @@ def create_room(
         max_members=request.max_members,
         status="WAITING",
         current_stage="WAITING",
+        subject=request.subject.strip() if request.subject else "세계와 시민"
     )
     db.add(new_room)
     db.flush()
@@ -447,3 +466,5 @@ def join_room_by_invite_code(
         title=room.title,
         current_stage=room.current_stage
     )
+
+

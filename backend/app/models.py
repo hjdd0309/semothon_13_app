@@ -54,6 +54,7 @@ class Room(Base):
     status = Column(String(50), default="active")
     current_stage = Column(String(50), default="waiting")
     created_at = Column(DateTime, server_default=func.now())
+    subject = Column(String(100),nullable=True)
 
     tasks = relationship("Task", back_populates="room")
 
@@ -201,12 +202,25 @@ from sqlalchemy.orm import relationship
 class Todo(Base):
     __tablename__ = "todos"
 
-    id = Column(BigInteger().with_variant(BigInteger, "mysql"), primary_key=True, autoincrement=True, comment="할 일 PK")
+    id = Column(BIGINT(unsigned=True).with_variant(BigInteger, "mysql"), primary_key=True, autoincrement=True, comment="할 일 PK")
 
-    room_id = Column(BigInteger().with_variant(BigInteger, "mysql"), ForeignKey("rooms.id", ondelete="CASCADE"), nullable=False, comment="소속 room ID")
-    creator_user_id = Column(BigInteger().with_variant(BigInteger, "mysql"), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, comment="할 일 생성자")
-    assignee_user_id = Column(BigInteger().with_variant(BigInteger, "mysql"), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, comment="담당자")
-
+    room_id = Column(BIGINT(unsigned=True), 
+        ForeignKey("rooms.id", ondelete="CASCADE"), 
+        nullable=False, 
+        comment="소속 room ID"
+    )
+    creator_user_id = Column(
+        BIGINT(unsigned=True), 
+        ForeignKey("users.id", ondelete="CASCADE"), 
+        nullable=False, 
+        comment="할 일 생성자"
+    )
+    assignee_user_id = Column(
+        BIGINT(unsigned=True), 
+        ForeignKey("users.id", ondelete="SET NULL"), 
+        nullable=True, 
+        comment="담당자"
+    )
     title = Column(String(200), nullable=False, comment="할 일 제목")
     description = Column(Text, nullable=True, comment="할 일 상세 설명")
 
