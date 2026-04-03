@@ -23,6 +23,33 @@ class Question {
 }
 
 final Map<String, List<Question>> subjectQuestions = {
+  '세계와 시민': [
+    Question(
+      title: '우리 조가 다뤄봤으면 하는 사회문제 분야는 무엇인가요? (1~2개 선택)',
+      type: QuestionType.multipleChoiceWithOther,
+      options: ['환경/생태', '인권/복지', '생활/안전', '교육/문화', '기술/과학'],
+      maxSelect: 2,
+    ),
+    Question(
+      title: '최근 일상생활에서 불편을 느끼거나 문제라고 생각했던 경험이 있다면 무엇인가요?',
+      type: QuestionType.text,
+    ),
+    Question(
+      title: '해결하는 사회문제의 범위는 어디까지인가요?',
+      type: QuestionType.singleChoice,
+      options: ['캠퍼스', '지역사회', '대한민국/국가 및 글로벌'],
+    ),
+    Question(
+      title: '이번 활동에서 대변하거나 돕고싶은 구체적 대상은 누구인가요?',
+      type: QuestionType.text,
+    ),
+    Question(
+      title: '도전해보고 싶은 해결 방식은 무엇인가요? (1~2개 선택)',
+      type: QuestionType.multipleChoiceWithOther,
+      options: ['숏폼 영상 제작', '오프라인 캠페인', '카드뉴스 제작', 'SNS 운영', '제도 제안'],
+      maxSelect: 2,
+    ),
+  ],
   '디자인적 사고': [
     Question(
       title: '최근 흥미로웠던 개발 주제가 있으신가요? (중복 가능)',
@@ -49,7 +76,7 @@ final Map<String, List<Question>> subjectQuestions = {
       options: ['아이디어 기획 중심', '간단한 프로토타입', '핵심 기능 구현', '대부분 기능 구현', '실제 배포 가능 수준'],
     ),
   ],
-  '세계와 시민': [
+  '데이터분석캡스톤디자인': [
     Question(
       title: '우리 조가 다뤄봤으면 하는 사회문제 분야는 무엇인가요? (1~2개 선택)',
       type: QuestionType.multipleChoiceWithOther,
@@ -131,7 +158,7 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
 
   bool hasStarted = false;
   int currentQuestionIndex = 0;
-  String selectedSubject = '디자인적 사고';
+  String selectedSubject = '세계와 시민';
   Map<int, dynamic> answers = {};
 
   // 텍스트 입력용 컨트롤러 (질문 이동 시 값 유지)
@@ -280,6 +307,29 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
         ],
       );
 
+    List<Map<String, String>> dummyTopics = [
+      {
+        'topic_name': '지역 주민 참여형 도시 안전 모니터링 플랫폼',
+        'reason':
+        '우리 팀원들 중에 안전 문제에 관심 있는 친구들이 많아서 골랐어요! 실제로 앱으로 만들기도 쉽고, 지역 사회에 도움이 될 것 같아서 추천했어요.',
+        'expected_effect':
+        '주민들이 직접 참여하면서 안전한 동네 만들기에 동참할 수 있을 거예요. 앱 개발 실전 경험도 쌓고, 지역 공동체도 더 단단해질 것 같아요!',
+      },
+      {
+        'topic_name': '다문화 가정 자녀 교육 지원 커뮤니티 서비스',
+        'reason':
+        '교육 분야에 관심 있는 팀원들이 많았고, 특히 다문화 학생들을 도와주는 게 의미 있을 것 같아서 골랐어요. 우리 주변에서도 이런 도움이 필요할 때가 많더라고요.',
+        'expected_effect':
+        '아이들이 언어 때문에 힘들어하지 않도록 도와줄 수 있을 거예요. 지역 사회 사람들도 함께 참여하면서 서로 더 잘 이해하게 될 것 같아요!',
+      },
+      {
+        'topic_name': '청년 사회참여를 위한 온라인 정책 제안 캠페인',
+        'reason':
+        '청년들이 사회 문제에 관심이 많다는 걸 보고 골랐어요. 정책 참여가 어렵게 느껴지는 친구들에게 쉽게 다가갈 수 있는 방법이 필요할 것 같아서 추천했어요.',
+        'expected_effect':
+        '청년들의 목소리가 정책에 반영될 수 있도록 도와줄 거예요. 온라인으로 쉽게 참여할 수 있게 하면 더 많은 친구들이 관심 가져줄 것 같아요!',
+      },
+    ];
       if (!mounted) return;
       Navigator.pop(context); // close dialog
 
@@ -959,7 +1009,7 @@ class RecommendationResultScreen extends StatelessWidget {
         padding: const EdgeInsets.all(18.0),
         child: Column(
           children: [
-            // 상단 헤더 카드
+            // 상단 헤더 카드 - 사자 캐릭터가 말하는 디자인
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(22),
@@ -968,34 +1018,59 @@ class RecommendationResultScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(color: kBorder),
               ),
-              child: Column(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // 사자 캐릭터 이미지
                   Container(
-                    width: 62,
-                    height: 62,
+                    width: 76,
+                    height: 76,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFF2F2),
+                      color: Colors.white,
                       shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFFF1D9D9)),
+                      border: Border.all(
+                        color: const Color(0xFFE0E0E0),
+                        width: 1.5,
+                      ),
                     ),
-                    child: const Icon(Icons.lightbulb_outline_rounded,
-                        color: kWine, size: 30),
+                    child: ClipOval(
+                      child: Image.asset(
+                        'assets/images/face.png',
+                        fit: BoxFit.cover,
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 18),
-                  const Text('추천된 주제 3가지',
-                      style: TextStyle(
-                          color: kText,
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 10),
-                  const Text(
-                    '팀원들의 의견을 종합하여 생성된 결과입니다.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                        color: kSub,
-                        fontSize: 14,
-                        height: 1.5,
-                        fontWeight: FontWeight.w600),
+                  const SizedBox(width: 16),
+                  // 말풍선 부분
+                  Expanded(
+                    child: Container(
+                      margin: const EdgeInsets.only(left: 10),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF8F8),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFF1D9D9)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('주제 3가지를 추천해줄게요!',
+                              style: TextStyle(
+                                  color: kText,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800)),
+                          const SizedBox(height: 8),
+                          const Text(
+                            '팀원들 의견을 모아서 골라봤어요!',
+                            style: TextStyle(
+                                color: kSub,
+                                fontSize: 14,
+                                height: 1.5,
+                                fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -1097,7 +1172,7 @@ class RecommendationResultScreen extends StatelessWidget {
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16)),
                     ),
-                    child: const Text('대시보드 이동',
+                    child: const Text('돌아가기',
                         style: TextStyle(
                             fontSize: 15, fontWeight: FontWeight.w800)),
                   ),

@@ -693,6 +693,21 @@ Future<void> _moveToIceBreakingAfterJoin(Map<String, dynamic> data) async {
 
   if (!mounted) return;
 
+    final matchedProject = _findJoinedProjectFromResponse(data) ??
+        (projects.isNotEmpty ? projects.first : null);
+
+    if (matchedProject == null) {
+      _showSnackBar('참여한 프로젝트를 찾을 수 없어요.');
+      return;
+    }
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => IcebreakingStageScreen(
+          project: matchedProject,
+          service: _projectService,
+        ),
   final joinedProject = _findJoinedProjectFromResponse(data);
   if (joinedProject == null) {
     _showSnackBar('참여한 프로젝트를 찾지 못했어요.');
