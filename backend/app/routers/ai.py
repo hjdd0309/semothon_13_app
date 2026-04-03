@@ -302,7 +302,11 @@ def build_ice_breaking_prompt(summary_text: str, question: str) -> str:
 4. caution: 협업 시 서로 조심하면 좋은 점
 5. questions: 어색함을 깰 수 있는 질문 2~3개
 6. first_talk: 대화를 시작하기 좋은 추천 오프닝 멘트
-
+규칙:
+- 마크다운 코드블록(```) 사용 금지
+- 설명 문장 금지
+- json prefix 금지
+- JSON 객체 하나만 출력
 - 모든 내용은 '경향성' 수준으로 부드럽게 표현할 것.
 - 한국어로 작성할 것.
 """.strip()
