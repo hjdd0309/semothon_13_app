@@ -693,11 +693,10 @@ class _IcebreakingStageScreenState extends State<IcebreakingStageScreen> {
               color: kCard,
               borderRadius: BorderRadius.circular(24),
               border: Border.all(color: kBorder),
-            ),
-            child: const Column(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   '쿠옹 코치 한줄 브리핑',
                   style: TextStyle(
                     color: kText,
@@ -705,7 +704,7 @@ class _IcebreakingStageScreenState extends State<IcebreakingStageScreen> {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
                 Text(
                   aiResultData?['ai_insights'] ?? '상세 결과가 없습니다.',
                   style: const TextStyle(
