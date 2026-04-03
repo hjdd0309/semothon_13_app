@@ -768,3 +768,45 @@ class TodoSingleResponse(BaseModel):
 class MessageResponse(BaseModel):
     success: bool
     message: str
+
+
+class AIContextSummaryUpsertRequest(BaseModel):
+    room_id: int
+    title: str
+    summary_text: str
+    context_type: str = "team_project"
+    context_json: Optional[Any] = None
+    question: Optional[str] = None
+    answer: Optional[str] = None
+    is_active: bool = True
+
+
+class AIContextSummaryUpdateRequest(BaseModel):
+    summary_text: str
+
+
+class AIContextResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    room_id: int
+    context_type: str
+    title: str
+    context_json: Optional[Any] = None
+    summary_text: Optional[str] = None
+    question: Optional[str] = None
+    answer: Optional[str] = None
+    version: int
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class AIContextSingleResponse(BaseModel):
+    success: bool
+    ai_context: AIContextResponse
+
+
+class MessageResponse(BaseModel):
+    success: bool
+    message: str

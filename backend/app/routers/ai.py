@@ -4,16 +4,22 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app import schemas, models
-from app.models import AIContext, Room, ChatMessage
+from app.models import AIContext, Room, ChatMessage, User
 import json
 import re
 import logging
 from datetime import datetime, timezone
 from typing import List, Optional
 from sqlalchemy.exc import IntegrityError
+from app.dependencies import get_current_user
 
 from app.database import get_db
 from app.config import settings
+from app.schemas import (
+    AIContextSummaryUpsertRequest,
+    AIContextSummaryUpdateRequest,
+    AIContextSingleResponse,
+)
 
 
 import json
@@ -846,11 +852,11 @@ def chat_with_bot(
         .first()
     )
 
-    if ai_context is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="해당 room의 활성 AI 컨텍스트가 존재하지 않습니다.",
-        )
+    # if ai_context is None:
+    #     raise HTTPException(
+    #         status_code=status.HTTP_404_NOT_FOUND,
+    #         detail="해당 room의 활성 AI 컨텍스트가 존재하지 않습니다.",
+    #     )
 
     if not ai_context.summary_text or not ai_context.summary_text.strip():
         raise HTTPException(
@@ -916,3 +922,62 @@ def chat_with_bot(
         reply=answer_text,
         ai_context_id=ai_context.id,
     )
+
+@router.post("/summary", response_model=AIContextSingleResponse, status_code=status.HTTP_201_CREATED)
+def create_ai_context_summary(
+    request: AIContextSummaryUpsertRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    room = db.query(Room).filter(Room.id == request.room_id).first()
+    if not room:
+        raise HTTPException(status_code=404, detail="Room not found")
+
+    latest_ai_context = (
+        db.query(AIContext)
+        .filter(AIContext.room_id == request.room_id)
+        .order_by(AIContext.version.desc(), AIContext.id.desc())
+        .first()
+    )
+
+    next_version = 1
+    if latest_ai_context:
+        next_version = latest_ai_context.version + 1
+
+    new_ai_context = AIContext(
+        room_id=request.room_id,
+        title=request.title,
+        context_type=request.context_type,
+        context_json=request.context_json,
+        summary_text=request.summary_text,
+        question=request.question,
+        answer=request.answer,
+        is_active=request.is_active,
+        version=next_version,
+    )
+
+    db.add(new_ai_context)
+    db.commit()
+    db.refresh(new_ai_context)
+
+    return {"success": True, "ai_context": new_ai_context}
+
+@router.patch("/{ai_context_id}/summary", response_model=AIContextSingleResponse)
+def update_ai_context_summary(
+    ai_context_id: int,
+    request: AIContextSummaryUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    ai_context = db.query(AIContext).filter(AIContext.id == ai_context_id).first()
+    if not ai_context:
+        raise HTTPException(status_code=404, detail="AI context not found")
+
+    ai_context.summary_text = request.summary_text
+    ai_context.version += 1
+
+    db.commit()
+    db.refresh(ai_context)
+
+    return {"success": True, "ai_context": ai_context}
+
