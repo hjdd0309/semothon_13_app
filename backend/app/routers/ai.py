@@ -331,8 +331,8 @@ def analyze_ice_breaking(request: schemas.IceBreakingRequest, db: Session = Depe
                 "type": "json_schema",
                 "json_schema": get_ice_breaking_json_schema()
             },
-            temperature=0.7, # 아이스브레이킹은 약간의 창의성이 필요함
-            max_completion_tokens=600  # JSON 구조가 복잡하므로 넉넉하게 설정
+            temperature=0.2, # 아이스브레이킹은 약간의 창의성이 필요함
+            max_completion_tokens=1000  # JSON 구조가 복잡하므로 넉넉하게 설정
         )
         raw_content = response.choices[0].message.content
         analysis_report = json.loads(raw_content)
