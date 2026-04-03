@@ -295,23 +295,23 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
       {
         'topic_name': '지역 주민 참여형 도시 안전 모니터링 플랫폼',
         'reason':
-        '문제 상황: 특정 지점에서 야간 범죄와 교통사고 발생이 반복되어 지역 주민 불안감이 높습니다.\n조사 활동: CCTV 빈도, 신고 데이터, 현장 인터뷰를 통해 위험구역을 시각화합니다.\n해결 활동: 모바일 앱으로 위험 지역 알림 제공, 주민 순찰 네트워크 운영 계획을 제시할 수 있습니다.',
+        '우리 팀원들 중에 안전 문제에 관심 있는 친구들이 많아서 골랐어요! 실제로 앱으로 만들기도 쉽고, 지역 사회에 도움이 될 것 같아서 추천했어요.',
         'expected_effect':
-        '활동 추천: 안전 보행 루트 맵 제작 + 주민 공동체 워크숍을 진행하여 문제 인식과 자율 해결 역량을 강화합니다.',
+        '주민들이 직접 참여하면서 안전한 동네 만들기에 동참할 수 있을 거예요. 앱 개발 실전 경험도 쌓고, 지역 공동체도 더 단단해질 것 같아요!',
       },
       {
         'topic_name': '다문화 가정 자녀 교육 지원 커뮤니티 서비스',
         'reason':
-        '문제 상황: 다문화 학생들이 언어 장벽과 학습 자료 부족으로 학습 격차를 겪고 있습니다.\n조사 활동: 가정 방문, 교사 인터뷰, 교육 성취도 데이터를 수집하여 필요 영역을 도출합니다.\n해결 활동: 온라인 멘토링 프로그램과 문화 콘텐츠 공유 플랫폼을 설계합니다.',
+        '교육 분야에 관심 있는 팀원들이 많았고, 특히 다문화 학생들을 도와주는 게 의미 있을 것 같아서 골랐어요. 우리 주변에서도 이런 도움이 필요할 때가 많더라고요.',
         'expected_effect':
-        '활동 추천: 교육 자료 번역·맞춤형 학습 경로 제공 + 지역 사회 언어 교류 행사를 운영해 유대감을 형성합니다.',
+        '아이들이 언어 때문에 힘들어하지 않도록 도와줄 수 있을 거예요. 지역 사회 사람들도 함께 참여하면서 서로 더 잘 이해하게 될 것 같아요!',
       },
       {
         'topic_name': '청년 사회참여를 위한 온라인 정책 제안 캠페인',
         'reason':
-        '문제 상황: 청년들이 정책 참여 채널을 몰라 의견이 수렴되지 않고 있습니다.\n조사 활동: 청년 설문, SNS 분석, 지방자치 데이터로 정책 관심사를 파악합니다.\n해결 활동: 쉽게 참여할 수 있는 웹 플랫폼과 정책 제안 카드뉴스 제작을 기획합니다.',
+        '청년들이 사회 문제에 관심이 많다는 걸 보고 골랐어요. 정책 참여가 어렵게 느껴지는 친구들에게 쉽게 다가갈 수 있는 방법이 필요할 것 같아서 추천했어요.',
         'expected_effect':
-        '활동 추천: 참여형 정책 토론 이벤트 + 온라인 투표 시스템으로 의견 수렴을 체계화합니다.',
+        '청년들의 목소리가 정책에 반영될 수 있도록 도와줄 거예요. 온라인으로 쉽게 참여할 수 있게 하면 더 많은 친구들이 관심 가져줄 것 같아요!',
       },
     ];
 
@@ -976,7 +976,7 @@ class RecommendationResultScreen extends StatelessWidget {
         padding: const EdgeInsets.all(18.0),
         child: Column(
           children: [
-            // 상단 헤더 카드
+            // 상단 헤더 카드 - 사자 캐릭터가 말하는 디자인
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(22),
@@ -985,34 +985,59 @@ class RecommendationResultScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(color: kBorder),
               ),
-              child: Column(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // 사자 캐릭터 이미지
                   Container(
-                    width: 62,
-                    height: 62,
+                    width: 76,
+                    height: 76,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFF2F2),
+                      color: Colors.white,
                       shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFFF1D9D9)),
+                      border: Border.all(
+                        color: const Color(0xFFE0E0E0),
+                        width: 1.5,
+                      ),
                     ),
-                    child: const Icon(Icons.lightbulb_outline_rounded,
-                        color: kWine, size: 30),
+                    child: ClipOval(
+                      child: Image.asset(
+                        'assets/images/face.png',
+                        fit: BoxFit.cover,
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 18),
-                  const Text('추천된 주제 3가지',
-                      style: TextStyle(
-                          color: kText,
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 10),
-                  const Text(
-                    '팀원들의 의견을 종합하여 생성된 결과입니다.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                        color: kSub,
-                        fontSize: 14,
-                        height: 1.5,
-                        fontWeight: FontWeight.w600),
+                  const SizedBox(width: 16),
+                  // 말풍선 부분
+                  Expanded(
+                    child: Container(
+                      margin: const EdgeInsets.only(left: 10),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF8F8),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFF1D9D9)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('주제 3가지를 추천해줄게요!',
+                              style: TextStyle(
+                                  color: kText,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800)),
+                          const SizedBox(height: 8),
+                          const Text(
+                            '팀원들 의견을 모아서 골라봤어요!',
+                            style: TextStyle(
+                                color: kSub,
+                                fontSize: 14,
+                                height: 1.5,
+                                fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
