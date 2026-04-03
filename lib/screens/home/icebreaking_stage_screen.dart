@@ -667,7 +667,7 @@ class _IcebreakingStageScreenState extends State<IcebreakingStageScreen> {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  aiResultData?['title'] ?? '결과를 불러올 수 없습니다.',
+                  aiResultData?['analysis_report']?['mood'] ?? '분석 결과 없음',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: kWine,
@@ -677,7 +677,7 @@ class _IcebreakingStageScreenState extends State<IcebreakingStageScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  aiResultData?['summary_text'] ?? '-',
+                  aiResultData?['analysis_report']?['universal'] ?? '-',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: kSub,
@@ -711,7 +711,8 @@ class _IcebreakingStageScreenState extends State<IcebreakingStageScreen> {
                 ),
                 SizedBox(height: 12),
                 Text(
-                  aiResultData?['ai_insights'] ?? '상세 결과가 없습니다.',
+                  aiResultData?['analysis_report']?['first_talk'] ?? 
+                  aiResultData?['analysis_report']?['caution'] ?? '상세 결과가 없습니다.',
                   style: const TextStyle(
                     color: kSub,
                     fontSize: 14,

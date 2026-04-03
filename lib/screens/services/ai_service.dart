@@ -17,8 +17,7 @@ class AIService {
       "room_id": roomId,
       "title": subject,
       "question": "아이스브레이킹 성향 질문들",
-      "answers": answers, 
-      // answers should currently map to `members` list. For now we will pass exactly what backend expects
+      "context_json": {"members": answers}, 
     };
 
     try {
