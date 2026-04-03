@@ -112,9 +112,13 @@ class _IcebreakingStageScreenState extends State<IcebreakingStageScreen> {
   }
 
   void _goNext() {
-    if (selectedOptionIndex == null) return;
+    if (selectedOptionIndex == null || isSubmitting) return;
 
-    selectedAnswers.add(selectedOptionIndex!);
+    if (currentQuestionIndex < selectedAnswers.length) {
+      selectedAnswers[currentQuestionIndex] = selectedOptionIndex!;
+    } else {
+      selectedAnswers.add(selectedOptionIndex!);
+    }
 
     if (currentQuestionIndex < questions.length - 1) {
       setState(() {
