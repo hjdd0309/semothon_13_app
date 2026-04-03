@@ -810,3 +810,29 @@ class AIContextSingleResponse(BaseModel):
 class MessageResponse(BaseModel):
     success: bool
     message: str
+
+class RoomUpdateRequest(BaseModel):
+    title: Optional[str] = Field(default=None, max_length=255)
+    topic: Optional[str] = Field(default=None, max_length=255)
+    description: Optional[str] = Field(default=None, max_length=500)
+    invite_code: Optional[str] = Field(default=None, max_length=20)
+    max_members: Optional[int] = Field(default=None, ge=1)
+    status: Optional[str] = Field(default=None, max_length=50)
+    current_stage: Optional[str] = Field(default=None, max_length=50)
+    subject: Optional[str] = Field(default=None, max_length=100)
+
+class RoomResponse(BaseModel):
+    id: int
+    host_user_id: int
+    title: str
+    topic: Optional[str] = None
+    description: Optional[str] = None
+    invite_code: str
+    max_members: int
+    status: Optional[str] = None
+    current_stage: str
+    subject: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True

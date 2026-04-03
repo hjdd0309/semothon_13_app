@@ -19,6 +19,7 @@ from app.schemas import (
     JoinRoomByInviteCodeRequest,
     JoinRoomByInviteCodeResponse,
     ErrorResponse,
+    RoomUpdateRequest, RoomResponse
 )
 
 router = APIRouter(prefix="/rooms", tags=["rooms"])
@@ -509,5 +510,45 @@ def join_room_by_invite_code(
         title=room.title,
         current_stage=room.current_stage
     )
+
+@router.patch(
+    "/{room_id}",
+    response_model=RoomResponse,
+    summary="룸 수정",
+    description="특정 룸 정보를 수정합니다.",
+)
+def update_room(
+    room_id: int,
+    request: RoomUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    room = db.query(Room).filter(Room.id == room_id).first()
+    if not room:
+        raise HTTPException(status_code=404, detail="Room not found")
+
+    # invite_code 중복 체크
+    if request.invite_code is not None:
+        existing_room = (
+            db.query(Room)
+            .filter(Room.invite_code == request.invite_code, Room.id != room_id)
+            .first()
+        )
+        if existing_room:
+            raise HTTPException(status_code=400, detail="Invite code already in use")
+
+    # None 값은 제외하고 업데이트
+    update_data = request.model_dump(exclude_unset=True, exclude_none=True)
+
+    for field, value in update_data.items():
+        setattr(room, field, value)
+
+    # status는 항상 WAITING
+    room.status = "WAITING"
+
+    db.commit()
+    db.refresh(room)
+
+    return room
 
 
