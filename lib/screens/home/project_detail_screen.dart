@@ -105,7 +105,11 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
         );
         break;
       case 2:
-        screen = const RoleAssignmentStageScreen();
+        screen = RoleAssignmentStageScreen(
+          project: project,
+          service: widget.service,
+          selectedTopic: '', // 상세 화면에서 직접 진입 시에는 빈 값 전달
+        );
         break;
       case 3:
         screen = const CollaborationStageScreen();

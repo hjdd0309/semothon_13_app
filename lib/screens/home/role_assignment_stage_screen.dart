@@ -37,6 +37,9 @@ class _RoleAssignmentStageScreenState extends State<RoleAssignmentStageScreen> {
     });
 
     try {
+      if (widget.selectedTopic.isEmpty) {
+        throw Exception('선택된 주제가 없습니다. 주제 선정 단계에서 먼저 주제를 확정해주세요.');
+      }
       final roomId = int.parse(widget.project.projectNumber);
       final result = await AIService.distributeTasks(roomId, widget.selectedTopic);
       
