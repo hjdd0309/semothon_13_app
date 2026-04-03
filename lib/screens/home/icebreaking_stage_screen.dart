@@ -119,6 +119,37 @@ class _IcebreakingStageScreenState extends State<IcebreakingStageScreen> {
         selectedOptionIndex = null;
       });
     } else {
+      _finishIcebreaking();
+    }
+  }
+
+  void _finishIcebreaking() async {
+    setState(() {
+      isSubmitting = true;
+    });
+
+    try {
+      List<String> myTextAnswers = [];
+      for (int i = 0; i < selectedAnswers.length; i++) {
+        myTextAnswers.add(questions[i]['options'][selectedAnswers[i]]);
+      }
+
+      final result = await AIService.getIcebreakingResult(
+        1,
+        widget.project.projectTitle,
+        [
+          {"user_id": 1, "answers": ["먼저 말 걸고 분위기를 푼다", "자유롭게 아이디어 많이"]},
+          {"user_id": 2, "answers": ["일단 팀 분위기를 살핀다", "짧고 핵심만 빠르게"]},
+          {"user_id": 3, "answers": myTextAnswers}
+        ]
+      );
+
+      setState(() {
+        isSubmitting = false;
+        aiResultData = result;
+        currentQuestionIndex++; // 완료 상태로 렌더링되게 함
+      });
+    } catch (e) {
       setState(() {
         currentQuestionIndex++;
       });
@@ -690,6 +721,7 @@ class _IcebreakingStageScreenState extends State<IcebreakingStageScreen> {
               children: [
                 const Text(
                   '💭 쿠옹의 한줄 피드백',
+                  '쿠옹 코치 한줄 브리핑',
                   style: TextStyle(
                     color: kText,
                     fontSize: 18,
