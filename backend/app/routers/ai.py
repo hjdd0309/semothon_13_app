@@ -802,7 +802,7 @@ def build_chat_prompt(summary_text: str, question: str) -> str:
     return f"""
 아래는 현재 팀 프로젝트에 대한 요약 정보다.
 
-[팀 정보]
+[팀 정보] 
 {summary_text}
 
 [사용자 질문]
@@ -812,6 +812,8 @@ def build_chat_prompt(summary_text: str, question: str) -> str:
 - 팀 상황에 맞는 실질적인 조언 제공
 - 추상적인 말보다 바로 활용 가능한 답변 제공
 - 필요하면 우선순위나 다음 행동을 제안
+- 팀 정보가 최우선으로 고려해야하는 사항이야
+- 팀 정보에 질문의 내용이 있다면 팀 정보 토대로 무조건 답해야해 무조건
 
 [주의사항]
 - 팀 정보에 없는 내용을 과도하게 단정하지 말 것
