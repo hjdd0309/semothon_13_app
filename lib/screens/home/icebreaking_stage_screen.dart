@@ -3,6 +3,7 @@ import '../models/project_detail_model.dart';
 import '../services/project_service.dart';
 import 'project_detail_screen.dart';
 import 'topic_selection_stage_screen.dart';
+import '../services/ai_service.dart';
 
 class IcebreakingStageScreen extends StatefulWidget {
   final ProjectDetailModel project;
@@ -27,6 +28,8 @@ class _IcebreakingStageScreenState extends State<IcebreakingStageScreen> {
   static const Color kWine = Color(0xFFA31621);
 
   bool hasStarted = false;
+  bool isSubmitting = false;
+  Map<String, dynamic>? aiResultData;
   int currentQuestionIndex = 0;
   int? selectedOptionIndex;
 
@@ -119,9 +122,45 @@ class _IcebreakingStageScreenState extends State<IcebreakingStageScreen> {
         selectedOptionIndex = null;
       });
     } else {
+      _finishIcebreaking();
+    }
+  }
+
+  void _finishIcebreaking() async {
+    setState(() {
+      isSubmitting = true;
+    });
+
+    try {
+      List<String> myTextAnswers = [];
+      for (int i = 0; i < selectedAnswers.length; i++) {
+        myTextAnswers.add(questions[i]['options'][selectedAnswers[i]]);
+      }
+
+      final result = await AIService.getIcebreakingResult(
+        1,
+        widget.project.title ?? '기본 프로젝트',
+        [
+          {"user_id": 1, "answers": ["먼저 말 걸고 분위기를 푼다", "자유롭게 아이디어 많이"]},
+          {"user_id": 2, "answers": ["일단 팀 분위기를 살핀다", "짧고 핵심만 빠르게"]},
+          {"user_id": 3, "answers": myTextAnswers}
+        ]
+      );
+
       setState(() {
-        currentQuestionIndex++;
+        isSubmitting = false;
+        aiResultData = result;
+        currentQuestionIndex++; // 완료 상태로 렌더링되게 함
       });
+    } catch (e) {
+      setState(() {
+        isSubmitting = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('AI 분석을 불러오지 못했습니다: $e')),
+        );
+      }
     }
   }
 
@@ -624,7 +663,7 @@ class _IcebreakingStageScreenState extends State<IcebreakingStageScreen> {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  _getTeamSummaryTitle(),
+                  aiResultData?['title'] ?? '결과를 불러올 수 없습니다.',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: kWine,
@@ -634,7 +673,7 @@ class _IcebreakingStageScreenState extends State<IcebreakingStageScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  _getTeamSummaryDescription(),
+                  aiResultData?['summary_text'] ?? '-',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: kSub,
@@ -668,8 +707,8 @@ class _IcebreakingStageScreenState extends State<IcebreakingStageScreen> {
                 ),
                 SizedBox(height: 12),
                 Text(
-                  '우리 팀은 분위기 적응과 의견 조율에 대한 감각이 좋아요. 다음 단계에서는 주제선정 전에 회의 방식과 역할 기준을 먼저 합의하면 더 안정적으로 협업할 수 있어요.',
-                  style: TextStyle(
+                  aiResultData?['ai_insights'] ?? '상세 결과가 없습니다.',
+                  style: const TextStyle(
                     color: kSub,
                     fontSize: 14,
                     height: 1.5,
@@ -773,9 +812,27 @@ Row(
       ),
       body: !hasStarted
           ? _buildWaitingScreen()
-          : isFinished
-              ? _buildResultScreen()
-              : _buildQuestionScreen(),
+          : isSubmitting
+              ? const Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(color: kWine),
+                      SizedBox(height: 16),
+                      Text(
+                        "AI가 팀 성향을 분석 중이에요...",
+                        style: TextStyle(
+                          color: kText,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      )
+                    ],
+                  ),
+                )
+              : isFinished
+                  ? _buildResultScreen()
+                  : _buildQuestionScreen(),
     );
   }
 }

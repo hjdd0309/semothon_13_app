@@ -3,6 +3,7 @@ import 'role_assignment_stage_screen.dart';
 import 'project_detail_screen.dart';
 import '../models/project_detail_model.dart';
 import '../services/project_service.dart';
+import '../services/ai_service.dart';
 
 // --- 1. 데이터 모델 및 모든 과목 질문 데이터 ---
 enum QuestionType { singleChoice, multipleChoice, text, multipleChoiceWithOther }
@@ -236,7 +237,7 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
         currentQuestionIndex++;
       });
     } else {
-      _submitSurveyFake();
+      _submitSurvey();
     }
   }
 
@@ -256,7 +257,7 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
     return true;
   }
 
-  void _submitSurveyFake() async {
+  void _submitSurvey() async {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -273,7 +274,8 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
               CircularProgressIndicator(color: kWine),
               SizedBox(height: 20),
               Text(
-                'AI가 주제를 분석 중이에요...',
+                'AI가 팀의 성향과 답변을\n열심히 분석하여 주제를 찾고 있어요...',
+                textAlign: TextAlign.center,
                 style: TextStyle(
                   color: kText,
                   fontSize: 15,
@@ -286,10 +288,24 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
       ),
     );
 
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      // 답변 데이터 가공
+      final myAnswers = answers.entries.map((e) {
+        if (e.value is List) {
+          return (e.value as List).join(',');
+        }
+        return e.value.toString();
+      }).toList();
 
-    if (!mounted) return;
-    Navigator.pop(context);
+      final result = await AIService.submitTopicAnswersAndGetRecommendation(
+        1,
+        selectedSubject,
+        [
+          {"user_id": 1, "answers": ["웹/앱 서비스", "Python, React", "사회 문제 해결을 위한 앱 만들기"]},
+          {"user_id": 2, "answers": ["간단한 프로토타입", "디자인 위주 진행 희망"]},
+          {"user_id": 3, "answers": myAnswers}
+        ],
+      );
 
     List<Map<String, String>> dummyTopics = [
       {
@@ -314,19 +330,36 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
         '청년들의 목소리가 정책에 반영될 수 있도록 도와줄 거예요. 온라인으로 쉽게 참여할 수 있게 하면 더 많은 친구들이 관심 가져줄 것 같아요!',
       },
     ];
+      if (!mounted) return;
+      Navigator.pop(context); // close dialog
 
-    if (!mounted) return;
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => RecommendationResultScreen(
-          topics: dummyTopics,
-          project: widget.project,
-          service: widget.service,
+      final List<dynamic> rawTopics = result['topics'] ?? [];
+      final List<Map<String, String>> realTopics = rawTopics.map((t) => {
+        'topic_name': t['topic_name']?.toString() ?? '',
+        'reason': t['reason']?.toString() ?? '',
+        'expected_effect': t['expected_effect']?.toString() ?? ''
+      }).toList();
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => RecommendationResultScreen(
+            topics: realTopics,
+            project: widget.project,
+            service: widget.service,
+          ),
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // close dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('주제 추천 중 에러가 발생했습니다: $e')),
+      );
+    }
   }
+
+
 
   // ──────────────────── 시작 화면 ────────────────────
   Widget _buildStartScreen() {
