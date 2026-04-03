@@ -114,18 +114,10 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
         screen = RoleAssignmentStageScreen(
           project: project,
           service: widget.service,
-          selectedTopic: '', // 상세 화면에서 직접 진입 시에는 빈 값 전달
         );
         break;
       case 3:
-        screen = TeamTodoOverviewScreen(
-          project: project,
-          service: widget.service,
-          todoItems: _buildTodoDisplayItems(),
-          myUserId: widget.myUserId,
-          myUsername: widget.myUsername,
-          myDisplayName: widget.myDisplayName,
-        );
+        screen = const TodoOverviewScreen();
         break;
       default:
         return;
@@ -432,7 +424,6 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     return const Color(0xFF6B7280);
   }
 
-
   Future<void> toggleTask(int roleIndex, int taskIndex) async {
     final role = roles[roleIndex];
     final task = role.tasks[taskIndex];
@@ -539,58 +530,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => TeamTodoOverviewScreen(
-          project: project,
-          service: widget.service,
-          todoItems: _buildTodoDisplayItems(),
-        ),
+        builder: (_) => const TodoOverviewScreen(),
       ),
     );
-  }
-
-  List<TodoDisplayItem> _buildTodoDisplayItems() {
-    final List<TodoDisplayItem> items = [];
-
-    for (final role in project.roles) {
-      final assigneeName = '팀원';
-
-      for (final task in role.tasks) {
-        final dueDateText = '${task.dueDate.year.toString().padLeft(4, '0')}-'
-            '${task.dueDate.month.toString().padLeft(2, '0')}-'
-            '${task.dueDate.day.toString().padLeft(2, '0')}';
-
-        String status;
-        if (task.done) {
-          status = '완료';
-        } else {
-          final today = DateTime.now();
-          final dueOnly = DateTime(
-            task.dueDate.year,
-            task.dueDate.month,
-            task.dueDate.day,
-          );
-          final todayOnly = DateTime(today.year, today.month, today.day);
-
-          if (dueOnly.isBefore(todayOnly)) {
-            status = '대기';
-          } else {
-            status = '진행중';
-          }
-        }
-
-        items.add(
-          TodoDisplayItem(
-            title: task.title,
-            assignee: assigneeName,
-            dueDateText: dueDateText,
-            status: status,
-            isDone: task.done,
-          ),
-        );
-      }
-    }
-
-    return items;
   }
 
   Future<void> sendChatMessage() async {

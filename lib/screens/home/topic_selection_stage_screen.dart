@@ -1174,9 +1174,6 @@ class _RecommendationResultScreenState
                                 builder: (context) => RoleAssignmentStageScreen(
                                   project: widget.project!,
                                   service: widget.service!,
-                                  selectedTopic: widget.topics[selectedIndex!]
-                                          ['topic_name'] ??
-                                      '',
                                 ),
                               ),
                             );
