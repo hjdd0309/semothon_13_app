@@ -83,6 +83,9 @@ class AIService {
   static Future<Map<String, dynamic>> distributeTasks(int roomId, String finalTopic) async {
     final url = Uri.parse('$baseUrl/api/ai/distribute');
     
+    // ignore: avoid_print
+    print('🚀 [DEBUG] DISTRIBUTE REQUEST - roomId: $roomId, finalTopic: "$finalTopic"');
+
     final Map<String, dynamic> body = {
       "room_id": roomId,
       "final_topic": finalTopic,
