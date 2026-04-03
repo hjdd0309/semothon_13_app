@@ -1,10 +1,10 @@
 import os
 from openai import OpenAI
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app import schemas, models
-from app.models import AIContext, Room
+from app.models import AIContext, Room, ChatMessage
 import json
 import re
 import logging
@@ -13,7 +13,6 @@ from typing import List, Optional
 from sqlalchemy.exc import IntegrityError
 
 from app.database import get_db
-from app import schemas, models
 from app.config import settings
 
 
@@ -293,7 +292,6 @@ def analyze_ice_breaking(
             analysis_report = json.loads(raw_content)
         except:
             analysis_report = {"raw": raw_content}
-        print(raw_content)
         
 
     except json.JSONDecodeError:
@@ -801,22 +799,6 @@ def build_system_chat_prompt() -> str:
 정보가 부족하면 과도하게 추측하지 말고, 부족한 점을 자연스럽게 언급하라.
 """.strip()
 
-@router.post("/chat", response_model=schemas.ChatMessageResponse)
-def chat_with_bot(request: schemas.ChatMessageRequest, db: Session = Depends(get_db)):
-    """
-    [Phase 4] 팀 통합 데이터베이스 AI Q&A API
-    해당 룸(방)에 존재하는 과거 채팅 트래킹 포함
-    """
-    
-    if not client:
-         raise HTTPException(status_code=500, detail="API Key is not configured")
-         
-    # 사용자 메시지 DB 저장 (발신: USER)
-    new_message = models.ChatMessage(room_id=request.room_id, message=request.message, sender_type="USER")
-    db.add(new_message)
-    db.commit()
-    db.refresh(new_message)
-
 def build_chat_prompt(summary_text: str, question: str) -> str:
     return f"""
 아래는 현재 팀 프로젝트에 대한 요약 정보다.
@@ -838,31 +820,34 @@ def build_chat_prompt(summary_text: str, question: str) -> str:
 - 너무 장황하지 않되, 핵심은 충분히 설명할 것
 """.strip()
 
+
 @router.post(
     "/chat",
     response_model=schemas.ChatMessageResponse,
     summary="팀 컨텍스트 기반 AI Q&A",
-    description=(
-        "해당 room의 활성 AI 컨텍스트를 불러와 summary_text를 기반으로 "
-        "사용자 질문에 답변합니다. 답변은 ai_contexts 테이블에도 저장됩니다."
-    )
 )
 def chat_with_bot(
     request: schemas.ChatMessageRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     if not client:
-        raise HTTPException(status_code=500, detail="API Key is not configured")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="API Key is not configured",
+        )
 
     room = db.query(Room).filter(Room.id == request.room_id).first()
     if room is None:
-        raise HTTPException(status_code=404, detail="해당 room이 존재하지 않습니다.")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="해당 room이 존재하지 않습니다.",
+        )
 
     ai_context = (
         db.query(AIContext)
         .filter(
             AIContext.room_id == request.room_id,
-            AIContext.is_active == True
+            AIContext.is_active == True,
         )
         .order_by(AIContext.updated_at.desc())
         .first()
@@ -870,19 +855,34 @@ def chat_with_bot(
 
     if ai_context is None:
         raise HTTPException(
-            status_code=404,
-            detail="해당 room의 활성 AI 컨텍스트가 존재하지 않습니다."
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="해당 room의 활성 AI 컨텍스트가 존재하지 않습니다.",
         )
 
-    if not ai_context.summary_text:
+    if not ai_context.summary_text or not ai_context.summary_text.strip():
         raise HTTPException(
-            status_code=400,
-            detail="활성 AI 컨텍스트의 summary_text가 비어 있습니다."
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="활성 AI 컨텍스트의 summary_text가 비어 있습니다.",
         )
+
+    if not request.message or not request.message.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="질문 내용이 비어 있습니다.",
+        )
+
+    user_message = ChatMessage(
+        room_id=request.room_id,
+        sender_user_id=None,
+        message_type="TEXT",
+        content=request.message.strip(),
+    )
+    db.add(user_message)
+    db.flush()
 
     prompt = build_chat_prompt(
         summary_text=ai_context.summary_text,
-        question=request.message
+        question=request.message.strip(),
     )
     system_prompt = build_system_chat_prompt()
 
@@ -890,32 +890,36 @@ def chat_with_bot(
         response = client.chat.completions.create(
             model=MODEL_NAME,
             messages=[
-                {
-                    "role": "system",
-                    "content": system_prompt,
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt},
             ],
             temperature=0.7,
         )
-
-        answer_text = response.choices[0].message.content.strip()
+        answer_text = (response.choices[0].message.content or "").strip()
 
     except Exception as e:
+        db.rollback()
         raise HTTPException(
-            status_code=500,
-            detail=f"AI 답변 호출 중 오류가 발생했습니다: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"AI 답변 호출 중 오류가 발생했습니다: {str(e)}",
         )
 
+    ai_message = ChatMessage(
+        room_id=request.room_id,
+        sender_user_id=None,
+        message_type="AI",
+        content=answer_text,
+    )
+    db.add(ai_message)
+
+    ai_context.question = request.message.strip()
     ai_context.answer = answer_text
+
     db.commit()
     db.refresh(ai_context)
 
     return schemas.ChatMessageResponse(
         success=True,
         reply=answer_text,
-        ai_context_id=ai_context.id
+        ai_context_id=ai_context.id,
     )
