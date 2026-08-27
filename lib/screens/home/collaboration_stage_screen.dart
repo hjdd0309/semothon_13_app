@@ -145,17 +145,22 @@ class _CollaborationStageScreenState
         
       ),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
-          children: [
-            _buildProgressCard(),
-            const SizedBox(height: 14),
-            _buildTabBar(),
-            const SizedBox(height: 16),
-            _buildSelectedSection(),
-            const SizedBox(height: 18),
-            _buildCoachMessageCard(),
-          ],
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 380),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
+              children: [
+                _buildProgressCard(),
+                const SizedBox(height: 14),
+                _buildTabBar(),
+                const SizedBox(height: 16),
+                _buildSelectedSection(),
+                const SizedBox(height: 18),
+                _buildCoachMessageCard(),
+              ],
+            ),
+          ),
         ),
       ),
     );

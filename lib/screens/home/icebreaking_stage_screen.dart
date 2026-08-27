@@ -825,29 +825,34 @@ class _IcebreakingStageScreenState extends State<IcebreakingStageScreen> {
           style: TextStyle(fontWeight: FontWeight.w800),
         ),
       ),
-      body: !hasStarted
-          ? _buildWaitingScreen()
-          : isSubmitting
-              ? const Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CircularProgressIndicator(color: kWine),
-                      SizedBox(height: 16),
-                      Text(
-                        "AI가 팀 성향을 분석 중이에요...",
-                        style: TextStyle(
-                          color: kText,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      )
-                    ],
-                  ),
-                )
-              : isFinished
-                  ? _buildResultScreen()
-                  : _buildQuestionScreen(),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 380),
+          child: !hasStarted
+              ? _buildWaitingScreen()
+              : isSubmitting
+                  ? const Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(color: kWine),
+                          SizedBox(height: 16),
+                          Text(
+                            "AI가 팀 성향을 분석 중이에요...",
+                            style: TextStyle(
+                              color: kText,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          )
+                        ],
+                      ),
+                    )
+                  : isFinished
+                      ? _buildResultScreen()
+                      : _buildQuestionScreen(),
+        ),
+      ),
     );
   }
 }

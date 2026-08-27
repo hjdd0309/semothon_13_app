@@ -2982,7 +2982,10 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
         backgroundColor: kCream,
         resizeToAvoidBottomInset: true,
         body: SafeArea(
-          child: Column(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 380),
+              child: Column(
             children: [
               _HeaderSection(
                 projectTitle: project.projectTitle,
@@ -3058,6 +3061,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
               else
                 Expanded(child: buildTabContent()),
             ],
+              ),
+            ),
           ),
         ),
       ),

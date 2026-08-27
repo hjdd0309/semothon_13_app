@@ -84,13 +84,20 @@ class _TodoOverviewScreenState extends State<TodoOverviewScreen> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _buildMemberSelector(),
-          const SizedBox(height: 16),
-          _buildTodoCard(),
-        ],
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 380),
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                _buildMemberSelector(),
+                const SizedBox(height: 16),
+                _buildTodoCard(),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

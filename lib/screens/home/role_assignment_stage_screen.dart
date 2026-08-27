@@ -154,7 +154,10 @@ class _RoleAssignmentStageScreenState extends State<RoleAssignmentStageScreen> {
         ),
       ),
       body: SafeArea(
-        child: ListView(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 380),
+            child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           children: [
             _buildHeaderCard(),
@@ -220,6 +223,8 @@ class _RoleAssignmentStageScreenState extends State<RoleAssignmentStageScreen> {
               ),
             ),
           ],
+            ),
+          ),
         ),
       ),
     );

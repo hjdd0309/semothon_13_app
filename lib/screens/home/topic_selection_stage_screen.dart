@@ -272,29 +272,6 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
         ],
       );
 
-      List<Map<String, String>> dummyTopics = [
-        {
-          'topic_name': '지역 주민 참여형 도시 안전 모니터링 플랫폼',
-          'reason':
-              '우리 팀원들 중에 안전 문제에 관심 있는 친구들이 많아서 골랐어요! 실제로 앱으로 만들기도 쉽고, 지역 사회에 도움이 될 것 같아서 추천했어요.',
-          'expected_effect':
-              '주민들이 직접 참여하면서 안전한 동네 만들기에 동참할 수 있을 거예요. 앱 개발 실전 경험도 쌓고, 지역 공동체도 더 단단해질 것 같아요!',
-        },
-        {
-          'topic_name': '다문화 가정 자녀 교육 지원 커뮤니티 서비스',
-          'reason':
-              '교육 분야에 관심 있는 팀원들이 많았고, 특히 다문화 학생들을 도와주는 게 의미 있을 것 같아서 골랐어요. 우리 주변에서도 이런 도움이 필요할 때가 많더라고요.',
-          'expected_effect':
-              '아이들이 언어 때문에 힘들어하지 않도록 도와줄 수 있을 거예요. 지역 사회 사람들도 함께 참여하면서 서로 더 잘 이해하게 될 것 같아요!',
-        },
-        {
-          'topic_name': '청년 사회참여를 위한 온라인 정책 제안 캠페인',
-          'reason':
-              '청년들이 사회 문제에 관심이 많다는 걸 보고 골랐어요. 정책 참여가 어렵게 느껴지는 친구들에게 쉽게 다가갈 수 있는 방법이 필요할 것 같아서 추천했어요.',
-          'expected_effect':
-              '청년들의 목소리가 정책에 반영될 수 있도록 도와줄 거예요. 온라인으로 쉽게 참여할 수 있게 하면 더 많은 친구들이 관심 가져줄 것 같아요!',
-        },
-      ];
       if (!mounted) return;
       Navigator.pop(context); // close dialog
 
@@ -925,7 +902,12 @@ class _TopicSelectionStageScreenState extends State<TopicSelectionStageScreen> {
         title:
             const Text('주제선정', style: TextStyle(fontWeight: FontWeight.w800)),
       ),
-      body: !hasStarted ? _buildStartScreen() : _buildQuestionScreen(),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 380),
+          child: !hasStarted ? _buildStartScreen() : _buildQuestionScreen(),
+        ),
+      ),
     );
   }
 }
@@ -971,7 +953,10 @@ class _RecommendationResultScreenState
         title: const Text('AI 추천 결과',
             style: TextStyle(fontWeight: FontWeight.w800)),
       ),
-      body: Padding(
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 380),
+          child: Padding(
         padding: const EdgeInsets.all(18.0),
         child: Column(
           children: [
@@ -1196,6 +1181,8 @@ class _RecommendationResultScreenState
             ),
             const SizedBox(height: 8),
           ],
+        ),
+          ),
         ),
       ),
     );
