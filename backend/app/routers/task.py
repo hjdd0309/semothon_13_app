@@ -122,7 +122,7 @@ def create_task(body: TaskCreateRequest, db: Session = Depends(get_db)):
         db.rollback()
         raise HTTPException(
             status_code=400,
-            detail=f"DB 오류: 데이터 무결성 제약 조건 위반 (외래키 등 확인 필요)"
+            detail=f"DB 오류: 데이터 무결성 제약 조건 위반 (외래키 등 확인 필요): {e}"
         )
 
     return serialize_task(new_task)

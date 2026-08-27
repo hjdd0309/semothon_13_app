@@ -363,15 +363,6 @@ class IceBreakingAnswer(BaseModel):
     question: str
     answer: str
 
-class IceBreakingRequest(BaseModel):
-    room_id: int
-    answers: List[IceBreakingAnswer]
-
-class IceBreakingResponse(BaseModel):
-    success: bool
-    message: str
-    analysis_report: str
-
 class QuestionItem(BaseModel):
     index: int
     text: str
@@ -416,17 +407,6 @@ class GeneratedTask(BaseModel):
 class TaskDistributeResponse(BaseModel):
     success: bool
     tasks: List[GeneratedTask]
-
-class ChatMessageRequest(BaseModel):
-    room_id: int
-    message: str
-
-class ChatMessageResponse(BaseModel):
-    success: bool
-    reply: str
-
-
-
 
 class IceBreakingRequest(BaseModel):
     room_id: int = Field(..., description="분석 대상 팀의 room id")
@@ -502,121 +482,6 @@ class ChatMessageCreateResponse(BaseModel):
     message: str
     chat_message: ChatMessageItem
 
-
-
-class TodoCreateRequest(BaseModel):
-    room_id: int
-    creator_user_id: int
-    assignee_user_id: Optional[int] = None
-
-    title: str = Field(..., description="할 일 제목")
-    description: Optional[str] = None
-
-    status: Optional[Literal["TODO", "IN_PROGRESS", "BLOCKED", "REVIEW", "DONE", "CANCELLED"]] = "TODO"
-    success_flag: Optional[bool] = None
-    progress_percent: Optional[int] = None
-
-    priority: Optional[Literal["LOW", "MEDIUM", "HIGH", "URGENT"]] = "MEDIUM"
-
-    category: Optional[str] = None
-    tag: Optional[str] = None
-
-    start_date: Optional[datetime] = None
-    due_date: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-
-    estimated_minutes: Optional[int] = None
-    actual_minutes: Optional[int] = None
-
-    visibility: Optional[Literal["PRIVATE", "ROOM", "PUBLIC"]] = "ROOM"
-    source_type: Optional[Literal["MANUAL", "AI", "SYSTEM"]] = "MANUAL"
-    ai_suggested: Optional[bool] = None
-
-    sort_order: Optional[int] = None
-    archived: Optional[bool] = None
-    deleted: Optional[bool] = None
-
-
-class TodoResponse(BaseModel):
-    id: int
-    room_id: int
-    creator_user_id: int
-    assignee_user_id: Optional[int] = None
-
-    title: str
-    description: Optional[str] = None
-
-    status: Optional[str] = None
-    success_flag: Optional[bool] = None
-    progress_percent: Optional[int] = None
-    priority: Optional[str] = None
-
-    category: Optional[str] = None
-    tag: Optional[str] = None
-
-    start_date: Optional[datetime] = None
-    due_date: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-
-    estimated_minutes: Optional[int] = None
-    actual_minutes: Optional[int] = None
-
-    visibility: Optional[str] = None
-    source_type: Optional[str] = None
-    ai_suggested: Optional[bool] = None
-
-    sort_order: Optional[int] = None
-    archived: Optional[bool] = None
-    deleted: Optional[bool] = None
-
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
-
-
-class TodoListResponse(BaseModel):
-    success: bool
-    todos: list[TodoResponse]
-
-
-
-
-class TodoUpdateRequest(BaseModel):
-    assignee_user_id: Optional[int] = None
-    title: Optional[str] = None
-    description: Optional[str] = None
-
-    status: Optional[Literal["TODO", "IN_PROGRESS", "BLOCKED", "REVIEW", "DONE", "CANCELLED"]] = None
-    success_flag: Optional[bool] = None
-    progress_percent: Optional[int] = None
-
-    priority: Optional[Literal["LOW", "MEDIUM", "HIGH", "URGENT"]] = None
-
-    category: Optional[str] = None
-    tag: Optional[str] = None
-
-    start_date: Optional[datetime] = None
-    due_date: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-
-    estimated_minutes: Optional[int] = None
-    actual_minutes: Optional[int] = None
-
-    visibility: Optional[Literal["PRIVATE", "ROOM", "PUBLIC"]] = None
-    source_type: Optional[Literal["MANUAL", "AI", "SYSTEM"]] = None
-    ai_suggested: Optional[bool] = None
-
-    sort_order: Optional[int] = None
-    archived: Optional[bool] = None
-    deleted: Optional[bool] = None
-
-
-class TodoStatusUpdateRequest(BaseModel):
-    status: Literal["TODO", "IN_PROGRESS", "BLOCKED", "REVIEW", "DONE", "CANCELLED"]
-    progress_percent: Optional[int] = None
-    success_flag: Optional[bool] = None
 
 
 class SimpleSuccessResponse(BaseModel):
@@ -805,8 +670,3 @@ class AIContextResponse(BaseModel):
 class AIContextSingleResponse(BaseModel):
     success: bool
     ai_context: AIContextResponse
-
-
-class MessageResponse(BaseModel):
-    success: bool
-    message: str

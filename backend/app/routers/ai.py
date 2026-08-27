@@ -30,7 +30,7 @@ router = APIRouter(
 )
 
 # 환경 변수에서 기본 API 키를 읽어와 초기 설정
-api_key = "0FSeuXcueB9auGDkB5pn4tuz4h9LbRGU"
+api_key = os.getenv("MINDLOGIC_API_KEY", "0FSeuXcueB9auGDkB5pn4tuz4h9LbRGU")
 client = None
 
 if api_key:
@@ -731,28 +731,17 @@ def distribute_tasks(
     room = db.query(models.Room).filter(models.Room.id == request.room_id).first()
     if not room:
         raise HTTPException(status_code=404, detail="방을 찾을 수 없습니다.")
-<<<<<<< HEAD
-    
-    # 요청으로 들어온 주제가 있으면 DB 업데이트
-    if request.final_topic and (not room.topic or room.topic != request.final_topic):
-        room.topic = request.final_topic
-=======
     # 요청으로 들어온 주제가 있으면 DB 업데이트 (공백 제거 후 유효성 검사)
     final_topic_stripped = (request.final_topic or "").strip()
     if final_topic_stripped and (not room.topic or room.topic != final_topic_stripped):
         logger.info(f"✅ [DISTRIBUTE] Updating room topic to: {final_topic_stripped}")
         room.topic = final_topic_stripped
->>>>>>> backend
         db.add(room)
         db.commit()
         db.refresh(room)
 
-<<<<<<< HEAD
-    if not room.topic:
-=======
     if not (room.topic or "").strip():
         logger.error(f"❌ [DISTRIBUTE] Failed - No topic set for room {request.room_id}")
->>>>>>> backend
         raise HTTPException(status_code=400, detail="방에 설정된 주제가 없습니다.")
 
     # 1) 방 멤버 조회

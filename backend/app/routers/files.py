@@ -87,8 +87,6 @@ async def upload_file(
     )
 
     # public bucket이 아니라면 영구 URL 대신 내부 API 경로를 넣는 편이 낫다
-    file_url = f"/files/{'{'}file_id{'}'}/download"
-
     new_file = File(
         room_id=room_id,
         uploaded_by=current_user.id,
