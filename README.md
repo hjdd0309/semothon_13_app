@@ -1,6 +1,6 @@
 # 쿠옹 (Khuong)
 
-> 팀 프로젝트는 매번 같은 지점에서 삐걱거립니다 — 어색한 첫 만남, 감으로 나누는 역할, "그거 누가 하기로 했죠?"로 흩어지는 진행 상황. 쿠옹은 아이스브레이킹부터 주제 선정, 역할·업무 분배, 실시간 협업까지 AI가 각 단계를 코칭해서 팀장 한 명에게 쏠리는 조율 부담을 덜어줍니다.
+> 팀플은 매번 같은 데서 삐걱거립니다. 첫 모임은 어색하고, 역할은 감으로 나누고, 나중엔 누가 뭘 하기로 했는지도 다들 까먹습니다. 쿠옹은 아이스브레이킹부터 주제 선정, 역할 분배, 협업까지 AI가 옆에서 코치처럼 붙어서 팀장 한 명이 다 떠안던 조율 부담을 나눕니다.
 
 경희대학교 세모톤(Semothon) 13조가 만든 팀 프로젝트 코칭 앱입니다. Flutter 클라이언트(Android · iOS · Web)와 FastAPI 백엔드로 구성되어 있으며, 팀이 방(Room)을 만들면 아이스브레이킹 → 주제선정 → 역할분배 → 협업진행 4단계를 AI가 순서대로 가이드합니다.
 
@@ -35,21 +35,21 @@
 
 ## 핵심 기능
 
-- **4단계 온보딩 트래커** — 아이스브레이킹 · 주제선정 · 역할분배 · 협업진행 단계를 프로젝트 디테일 화면에서 진행률과 함께 관리 (`lib/screens/home/project_detail_screen.dart`)
-- **AI 코치** — 팀원 성향 요약, 과목별 주제 추천, 업무 자동 배분을 LLM에 위임하고 결과를 `ai_contexts` 테이블에 버전 관리하며 저장 (`backend/app/routers/ai.py`)
-- **초대 코드 기반 팀 룸** — 6자리 코드로 방 생성·참여, 방 단위 멤버/역할 관리 (`backend/app/routers/rooms.py`)
-- **실시간 채팅** — 방(Room) 단위 WebSocket 브로드캐스트 (`backend/app/websocket/chat_manager.py`)
-- **파일 공유** — Cloudflare R2 업로드 후 presigned URL로 다운로드/미리보기 (`backend/app/services/r2.py`)
-- **할 일 관리** — 담당자·우선순위·마감일·반복 여부까지 가진 Todo 모델과 정렬 재배치 API (`backend/app/routers/todos.py`)
+- **4단계 온보딩 트래커**: 아이스브레이킹 · 주제선정 · 역할분배 · 협업진행을 프로젝트 디테일 화면에서 진행률과 함께 보여줍니다.
+- **AI 코치**: 팀원 성향 요약, 주제 추천, 업무 자동 배분을 LLM에 맡기고 결과는 `ai_contexts` 테이블에 버전을 매겨 저장합니다.
+- 초대 코드 6자리만 있으면 팀 룸을 만들거나 들어갈 수 있습니다.
+- 채팅은 방(Room) 단위 WebSocket으로 실시간으로 오갑니다.
+- 파일은 Cloudflare R2에 올라가고, presigned URL로 내려받거나 미리 봅니다.
+- 할 일(Todo)에는 담당자·우선순위·마감일·반복 여부까지 붙습니다.
 
 ## 기술적 의사결정
 
-- **Flutter 단일 코드베이스** — `pubspec.yaml`에 android/ios/web/windows/macos/linux 플랫폼이 모두 구성되어 있고, `vercel.json`이 `flutter build web`을 직접 실행하도록 되어 있어 팀 규모(학생 해커톤)에 맞게 하나의 코드베이스로 웹 배포와 모바일 빌드를 동시에 해결하는 구조를 택했습니다.
-- **FastAPI + Pydantic 스키마** — `backend/app/schemas.py`가 800줄 넘게 요청/응답 모델과 `model_validator`(예: `IceBreakingRequest`의 `summary_text` 또는 `context_json` 중 하나 필수 검증)로 채워져 있습니다. AI 라우터가 다루는 입력이 자유 텍스트 + 구조화 JSON을 섞어 받아야 해서, 자동 검증과 `/docs` 스펙 노출이 되는 FastAPI가 이 팀에는 유리했을 것으로 보입니다.
-- **JWT + bcrypt(SHA-256 프리해시)** — `backend/app/security.py`에서 비밀번호를 bcrypt에 넣기 전에 SHA-256으로 먼저 압축합니다. bcrypt는 72바이트를 넘는 입력을 자르기 때문에, 긴 비밀번호에서도 잘림 없이 전체 입력이 검증에 반영되도록 한 선택입니다. 인증은 세션 대신 Bearer 토큰(`HTTPBearer` + `python-jose`)으로 처리해 Flutter 클라이언트가 토큰만 들고 다니면 되도록 했습니다.
-- **SQLAlchemy + BIGINT(unsigned) PK** — `backend/app/models.py`의 거의 모든 테이블이 `BIGINT(unsigned=True)`를 기본 키로 씁니다. 표준 `Integer` PK보다 큰 범위를 미리 확보해 두는 선택이며, `Todo` 모델에는 `CheckConstraint("progress_percent BETWEEN 0 AND 100")`과 room/creator/assignee/status/due_date 각각에 대한 인덱스가 명시되어 있어, 목록·정렬 조회가 잦을 것으로 예상하고 설계한 흔적입니다.
-- **Cloudflare R2 (S3 호환)** — `backend/app/services/r2.py`는 `boto3`의 S3 클라이언트를 `region_name="auto"`와 R2 전용 엔드포인트로 그대로 재사용합니다. S3 SDK 생태계를 그대로 쓰면서 R2의 이그레스 비용 이점을 취하는, 학생 프로젝트에서 흔히 보이는 실용적 선택입니다.
-- **OpenAI SDK 호환 게이트웨이로 Claude 호출** — `backend/app/routers/ai.py`는 `openai` 패키지의 `OpenAI` 클라이언트를 쓰지만 `base_url`을 자체 게이트웨이(`factchat-cloud.mindlogic.ai`)로 돌리고 `MODEL_NAME = "claude-sonnet-4-6"`을 지정합니다. 즉 OpenAI SDK의 인터페이스만 재사용하고 실제로는 Claude 계열 모델을 호출하는 프록시 구성입니다.
+- **Flutter 단일 코드베이스** — `pubspec.yaml`에 android/ios/web/windows/macos/linux가 전부 들어 있고, `vercel.json`은 배포할 때 그냥 `flutter build web`을 돌립니다. 학생 팀 규모에서 웹/모바일을 따로 만들 여유는 없었을 겁니다.
+- **FastAPI + Pydantic** — `schemas.py`가 800줄 넘게 요청/응답 모델과 `model_validator`로 채워져 있습니다. `IceBreakingRequest`는 `summary_text`나 `context_json` 둘 중 하나가 없으면 그 자리에서 검증 에러를 던지죠. AI 라우터가 자유 텍스트와 구조화 JSON을 섞어 받다 보니, 자동 검증과 `/docs` 스펙이 딸려오는 FastAPI 쪽이 편했을 겁니다.
+- **JWT + bcrypt(SHA-256 프리해시)** — `security.py`는 비밀번호를 bcrypt에 넣기 전에 SHA-256으로 한 번 압축합니다. bcrypt가 72바이트 넘는 입력을 그냥 잘라버리는 걸 피하려는 흔한 트릭입니다. 인증은 세션 대신 Bearer 토큰(`HTTPBearer` + `python-jose`) 하나로 처리해서, Flutter 쪽은 토큰만 들고 다니면 됩니다.
+- **SQLAlchemy, PK는 전부 BIGINT(unsigned)** — `models.py`의 테이블 대부분이 그렇습니다. `Todo`에는 `CheckConstraint("progress_percent BETWEEN 0 AND 100")`과 room/creator/assignee/status/due_date별 인덱스까지 붙어 있어서, 목록·정렬 조회를 꽤 신경 써서 설계했다는 게 보입니다.
+- **Cloudflare R2** — `r2.py`는 `boto3`의 S3 클라이언트를 엔드포인트만 R2로 바꿔서 그대로 씁니다. S3 SDK를 재사용하면서 R2의 이그레스 무료 혜택만 챙기는, 흔히 보이는 조합입니다.
+- **OpenAI SDK로 Claude 호출** — `ai.py`는 `openai` 패키지를 쓰지만 `base_url`을 자체 게이트웨이(`factchat-cloud.mindlogic.ai`)로 돌리고 `MODEL_NAME = "claude-sonnet-4-6"`을 지정합니다. SDK 인터페이스만 빌려 쓰고 실제로는 Claude를 부르는 프록시인 셈입니다.
 
 ## 폴더 구조
 
