@@ -14,11 +14,9 @@
 
 ## 미리보기
 
-> 스크린샷/GIF가 아직 없습니다. `docs/screenshots/` 폴더를 만들고 아래 표를 실제 이미지로 채워주세요. (홈 화면, 프로젝트 디테일, 아이스브레이킹 질문 화면 순서를 권장합니다.)
-
 | 홈 | 프로젝트 디테일 | 아이스브레이킹 |
 | --- | --- | --- |
-| ![홈 화면 스크린샷 삽입](docs/screenshots/home.png) | ![프로젝트 디테일 스크린샷 삽입](docs/screenshots/project-detail.png) | ![아이스브레이킹 스크린샷 삽입](docs/screenshots/icebreaking.png) |
+| ![홈 화면](docs/screenshots/home.png) | ![프로젝트 디테일](docs/screenshots/project-detail.png) | ![아이스브레이킹](docs/screenshots/icebreaking.png) |
 
 ## 핵심 기능
 
