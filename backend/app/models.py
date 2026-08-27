@@ -138,19 +138,6 @@ class UserSchedule(Base):
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
 
-# class ChatMessage(Base):
-#     __tablename__ = "chat_messages"
-
-    id = Column(BIGINT(unsigned=True), primary_key=True, autoincrement=True, index=True)
-    room_id = Column(BIGINT(unsigned=True), ForeignKey("rooms.id", ondelete="CASCADE"), nullable=False)
-    user_id = Column(BIGINT(unsigned=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True) 
-    sender_type = Column(Enum("USER", "AI", "SYSTEM", name="message_sender_type"), nullable=False, server_default="USER")
-    message = Column(Text, nullable=False)
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
-
-#     room = relationship("Room", backref="chat_messages")
-#     user = relationship("User", backref="chat_messages")
-
 
 class AIContext(Base):
     __tablename__ = "ai_contexts"
